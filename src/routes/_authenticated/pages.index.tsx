@@ -167,9 +167,9 @@ function PagesPage() {
             {analyzeAllM.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             Analyze all ({pendingCount})
           </Button>
-          <Button size="sm" variant="outline" onClick={() => briefsAllM.mutate()} disabled={briefsAllM.isPending || analyzedCount === 0}>
+          <Button size="sm" variant="outline" onClick={() => briefsAllM.mutate()} disabled={briefsAllM.isPending || briefsNeededCount === 0}>
             {briefsAllM.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            Generate briefs
+            Generate briefs ({briefsNeededCount})
           </Button>
           <Button size="sm" variant="outline" onClick={() => renderAllRunning ? (stopRef.v = true) : renderAllM.mutate()} disabled={!renderAllRunning && active.every((p) => p.images_ready >= p.briefs_total)}>
             {renderAllRunning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Stop</> : <><ImageIcon className="mr-2 h-4 w-4" />Render pins</>}
