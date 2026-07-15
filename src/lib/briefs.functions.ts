@@ -33,18 +33,36 @@ export const generateBriefs = createServerFn({ method: "POST" })
     const brandFont = site?.brand_font ?? "";
     const brandNotes = site?.brand_notes ?? "";
     const paletteLine = brandColors.length
-      ? `Use ONLY this brand color palette: ${brandColors.join(", ")}. Backgrounds, accents, and overlay text must come from this palette.`
-      : `Use a cohesive palette derived from the page's topic; keep it consistent across all 10 pins for this batch.`;
-    const isCalculatorPage = /calculator|calc|tool/i.test(`${page.url} ${page.title ?? ""} ${analysis.topic ?? ""} ${analysis.category ?? ""}`);
-    const ctaGuidance = isCalculatorPage
-      ? `This is a CALCULATOR / TOOL page. Every CTA must push people to try the tool. Use punchy 2-4 word action phrases like "Calculate Yours →", "Try the Calculator", "Get Your Number", "Run the Numbers", "Free Calculator →". Vary them across the 10 pins.`
-      : `Every pin needs a strong action CTA (2-4 words) matching intent: "Read More →", "Get the Guide", "See the List", "Save This", "Try It Free".`;
-    const brandBlock = `BRAND LOCK (must appear on every image):
-- Brand name overlay near the top or as a small wordmark: "${brandName}".
-- Website URL centered at the BOTTOM of the pin (bottom center, ~6% margin, small caps or clean sans, high contrast, no box): "${brandHost}".
-- CTA BUTTON: a clearly designed pill/rectangle button in the lower third of the pin (above the URL footer, roughly 70-80% down), high-contrast against the background, using an accent color from the brand palette. Button label = the brief's cta text, in bold sans, with a trailing arrow "→" when it fits. This button MUST be present on every pin.
-- ${paletteLine}
-${brandFont ? `- Typography direction: ${brandFont}.\n` : ""}${brandNotes ? `- Brand notes: ${brandNotes}.\n` : ""}- Do NOT invent a different URL or brand name. No fake logos.`;
+      ? `brand palette: ${brandColors.join(", ")}`
+      : `cohesive palette derived from the page's topic (keep identical across the batch)`;
+    // Intent detection drives the CTA pool so a tips pin gets "Read the Guide →",
+    // not "Try It Free". Model can override per-brief in its returned intent.
+    const haystack = `${page.url} ${page.title ?? ""} ${analysis.topic ?? ""} ${analysis.category ?? ""}`.toLowerCase();
+    const defaultIntent: "informational" | "tool" | "list" | "commercial" =
+      /calculator|calc|\/tool|estimator/.test(haystack) ? "tool"
+      : /\bvs\b|versus|compare|comparison|best\s+\d|top\s+\d|listicle/.test(haystack) ? "list"
+      : /pricing|signup|sign-up|trial|buy|checkout|plans/.test(haystack) ? "commercial"
+      : "informational";
+    const ctaPools: Record<string, string[]> = {
+      informational: ["Read the Guide →", "See All Tips →", "Learn How →", "Get the Full Guide →", "Read More →"],
+      tool: ["Calculate Yours →", "Try the Calculator →", "Run the Numbers →", "Get Your Number →", "Free Calculator →"],
+      list: ["See the List →", "Compare Options →", "See the Comparison →", "View All →", "See Which Wins →"],
+      commercial: ["Try It Free →", "Get Started →", "Start Free →", "Sign Up Free →", "Try Now →"],
+    };
+    const ctaGuidance = `Each brief has an intent: "informational" | "tool" | "list" | "commercial". Default intent for THIS page = "${defaultIntent}"; you MAY set a different intent per brief when the angle differs (e.g. a comparison pin on a tool page = "list"). Then pick cta EXCLUSIVELY from the matching pool:
+- informational: ${JSON.stringify(ctaPools.informational)}
+- tool: ${JSON.stringify(ctaPools.tool)}
+- list: ${JSON.stringify(ctaPools.list)}
+- commercial: ${JSON.stringify(ctaPools.commercial)}
+Never mix pools. Never invent CTAs outside the pools. Vary CTAs across the batch.`;
+    const brandBlock = `UNIVERSAL PIN TEMPLATE — identical frame on every pin. Only the middle illustration, the title text, and the CTA label change.
+- Aspect ratio 2:3, 1000x1500.
+- TOP AREA: The pin title in an elegant serif display font, cream/off-white color, set against a solid brand-color band OR over the illustration with a translucent brand overlay for legibility. Title is the largest element on the pin.
+- MIDDLE AREA: Illustration or photograph. Use ONLY the ${paletteLine}. Deep/dark brand color for backgrounds, warm accent for highlights, cream for negative space. No stray colors outside the palette.
+- CTA BUTTON (mandatory, lower third ~72-78% down from top): Pill/rounded-rectangle button in the brand's warm accent color (mustard/gold/orange if present in palette, otherwise the lightest palette accent). Dark text on it, bold clean sans, trailing arrow "→". Button label = this brief's cta value verbatim. Must be visibly clickable and high contrast.
+- BOTTOM BAR (mandatory, ~5% tall, full width, flush to the bottom edge): Solid dark brand-color band containing ONLY the website URL in cream/off-white, small clean sans, centered horizontally: "${brandHost}". NO brand name wordmark above or below. NO tagline. NO logo. URL only.
+- Do NOT invent a different URL. No fake logos. No stock-photo watermarks. No social handles.
+${brandFont ? `- Typography direction (title): ${brandFont}.\n` : ""}${brandNotes ? `- Brand notes: ${brandNotes}.\n` : ""}`;
 
     const stylesSubset = [...PIN_STYLES].sort(() => Math.random() - 0.5).slice(0, Math.min(data.count, PIN_STYLES.length));
     const chosenStyles = stylesSubset.length >= data.count
@@ -55,6 +73,7 @@ ${brandFont ? `- Typography direction: ${brandFont}.\n` : ""}${brandNotes ? `- B
       type BriefsResp = {
         briefs: Array<{
           style: string;
+          intent: "informational" | "tool" | "list" | "commercial";
           title: string;
           description: string;
           hashtags: string[];
@@ -66,18 +85,26 @@ ${brandFont ? `- Typography direction: ${brandFont}.\n` : ""}${brandNotes ? `- B
       const resp = await openaiJSON<BriefsResp>({
         apiKey: cfg.api_key,
         model: "gpt-4o-mini",
-        system: "You are a Pinterest pin strategist. Return strict JSON. Titles under 100 chars, descriptions 150-450 chars, natural keyword use (no stuffing), 5-8 hashtags including the primary keyword. Every pin has an action CTA.",
+        system: `You are a Pinterest SEO strategist. Return strict JSON. Every pin has:
+- title: <=100 chars, PRIMARY KEYWORD in the first 40 chars, curiosity-driven, no clickbait, no ALL CAPS.
+- description: 150-450 chars, natural sentences, primary keyword in first 50 chars, weave in 2-3 secondary keywords, end with the CTA phrase as a call to action.
+- alt_text: <=250 chars, LITERAL visual description of what's in the image ("gloved hand digging beside green rain barrel next to garden shed"), include primary keyword once, NOT marketing copy.
+- hashtags: 4-6, lowercase, no spaces, include the primary keyword as a hashtag plus secondaries; no # in the strings.
+- cta: chosen from the intent-matched pool ONLY.
+- intent: one of informational|tool|list|commercial.`,
         user: `Create ${data.count} unique Pinterest pin briefs for this page. Use each style once from this list where possible: ${JSON.stringify(chosenStyles)}.
 
-Return JSON: { briefs: [{ style, title, description, hashtags: [], alt_text, cta, image_prompt }] }.
+Return JSON: { briefs: [{ style, intent, title, description, hashtags: [], alt_text, cta, image_prompt }] }.
 
-CTA RULES: ${ctaGuidance}
+CTA & INTENT RULES:
+${ctaGuidance}
 
-The image_prompt is for a text-to-image model producing a vertical 2:3 Pinterest pin at 1000x1500. Include composition, style (photography/illustration/flat/vintage/infographic/split/minimal etc), and any overlay text WITH exact typography direction. Vary composition/style per brief, but keep the brand lock IDENTICAL on every pin. The image_prompt MUST explicitly describe a visible CTA button rendering the exact cta text.
+The image_prompt is for a text-to-image model producing a vertical 2:3 Pinterest pin at 1000x1500. Describe the middle illustration/photo, composition, and mood. Vary the middle imagery per brief. The universal template below is IDENTICAL on every pin — describe it verbatim at the end of every image_prompt.
 
 ${brandBlock}
 
-Every image_prompt MUST end with this exact line: "CTA button (lower third): [cta text] →. Bottom-center footer text: ${brandHost}. Small wordmark: ${brandName}. Palette: ${brandColors.join(", ") || "cohesive brand palette"}." — replace [cta text] with this brief's cta value.
+Every image_prompt MUST END with this exact line (substitute [cta text] with this brief's cta):
+"UNIVERSAL FRAME: Title in cream serif across the top over brand-color overlay. CTA button in warm accent color at ~75% down reading [cta text]. Bottom bar: solid dark brand-color band, full width, containing only the centered URL text \\"${brandHost}\\" in cream small sans. No wordmark, no logo, no tagline — URL only in the bottom bar. Palette: ${brandColors.join(", ") || "cohesive brand palette"}."
 
 Page: ${page.url}
 Topic: ${analysis.topic ?? ""}
@@ -91,6 +118,7 @@ Category: ${analysis.category ?? ""}`,
         user_id: context.userId,
         page_id: page.id,
         style: b.style,
+        intent: (["informational", "tool", "list", "commercial"].includes(b.intent) ? b.intent : defaultIntent),
         title: b.title,
         description: b.description,
         hashtags: b.hashtags ?? [],
