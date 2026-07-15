@@ -134,7 +134,13 @@ function SchedulePage() {
   );
 }
 
-function PinDetail({ row, onOpenChange, onDelete, deleting }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; deleting: boolean }) {
+function StatusBadge({ status }: { status: ScheduledRow["status"] }) {
+  const v = status === "published" ? "default" : status === "failed" ? "destructive" : "outline";
+  const label = status === "draft" ? "draft — review" : status;
+  return <Badge variant={v}>{label}</Badge>;
+}
+
+function PinDetail({ row, onOpenChange, onDelete, onQueue, deleting, queuing }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; onQueue: (id: string) => void; deleting: boolean; queuing: boolean }) {
   const brief = row?.pin_briefs;
   const page = brief?.pages;
   return (
