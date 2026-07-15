@@ -178,7 +178,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
         if ((perDayAccount.get(dk) ?? 0) >= SAFETY.maxPerAccountPerDay) continue;
 
         // Per-page daily cap — never schedule the same source page twice on one day
-        if (pageId && (perDayPage.get(`${dk}|${pageId}`) ?? 0) >= SAFETY.maxPerPagePerDay) continue;
+        if (pageId && (perDayPage.get(`${dk}|${pageId}`) ?? 0) >= perPageCap) continue;
 
         // Account-wide min-gap between any two pins
         if (accountTimestamps.some((t) => Math.abs(t - when) < SAFETY.minMinutesBetweenPins * 60_000)) continue;
