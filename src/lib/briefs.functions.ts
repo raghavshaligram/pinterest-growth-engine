@@ -33,18 +33,36 @@ export const generateBriefs = createServerFn({ method: "POST" })
     const brandFont = site?.brand_font ?? "";
     const brandNotes = site?.brand_notes ?? "";
     const paletteLine = brandColors.length
-      ? `Use ONLY this brand color palette: ${brandColors.join(", ")}. Backgrounds, accents, and overlay text must come from this palette.`
-      : `Use a cohesive palette derived from the page's topic; keep it consistent across all 10 pins for this batch.`;
-    const isCalculatorPage = /calculator|calc|tool/i.test(`${page.url} ${page.title ?? ""} ${analysis.topic ?? ""} ${analysis.category ?? ""}`);
-    const ctaGuidance = isCalculatorPage
-      ? `This is a CALCULATOR / TOOL page. Every CTA must push people to try the tool. Use punchy 2-4 word action phrases like "Calculate Yours →", "Try the Calculator", "Get Your Number", "Run the Numbers", "Free Calculator →". Vary them across the 10 pins.`
-      : `Every pin needs a strong action CTA (2-4 words) matching intent: "Read More →", "Get the Guide", "See the List", "Save This", "Try It Free".`;
-    const brandBlock = `BRAND LOCK (must appear on every image):
-- Brand name overlay near the top or as a small wordmark: "${brandName}".
-- Website URL centered at the BOTTOM of the pin (bottom center, ~6% margin, small caps or clean sans, high contrast, no box): "${brandHost}".
-- CTA BUTTON: a clearly designed pill/rectangle button in the lower third of the pin (above the URL footer, roughly 70-80% down), high-contrast against the background, using an accent color from the brand palette. Button label = the brief's cta text, in bold sans, with a trailing arrow "→" when it fits. This button MUST be present on every pin.
-- ${paletteLine}
-${brandFont ? `- Typography direction: ${brandFont}.\n` : ""}${brandNotes ? `- Brand notes: ${brandNotes}.\n` : ""}- Do NOT invent a different URL or brand name. No fake logos.`;
+      ? `brand palette: ${brandColors.join(", ")}`
+      : `cohesive palette derived from the page's topic (keep identical across the batch)`;
+    // Intent detection drives the CTA pool so a tips pin gets "Read the Guide →",
+    // not "Try It Free". Model can override per-brief in its returned intent.
+    const haystack = `${page.url} ${page.title ?? ""} ${analysis.topic ?? ""} ${analysis.category ?? ""}`.toLowerCase();
+    const defaultIntent: "informational" | "tool" | "list" | "commercial" =
+      /calculator|calc|\/tool|estimator/.test(haystack) ? "tool"
+      : /\bvs\b|versus|compare|comparison|best\s+\d|top\s+\d|listicle/.test(haystack) ? "list"
+      : /pricing|signup|sign-up|trial|buy|checkout|plans/.test(haystack) ? "commercial"
+      : "informational";
+    const ctaPools: Record<string, string[]> = {
+      informational: ["Read the Guide →", "See All Tips →", "Learn How →", "Get the Full Guide →", "Read More →"],
+      tool: ["Calculate Yours →", "Try the Calculator →", "Run the Numbers →", "Get Your Number →", "Free Calculator →"],
+      list: ["See the List →", "Compare Options →", "See the Comparison →", "View All →", "See Which Wins →"],
+      commercial: ["Try It Free →", "Get Started →", "Start Free →", "Sign Up Free →", "Try Now →"],
+    };
+    const ctaGuidance = `Each brief has an intent: "informational" | "tool" | "list" | "commercial". Default intent for THIS page = "${defaultIntent}"; you MAY set a different intent per brief when the angle differs (e.g. a comparison pin on a tool page = "list"). Then pick cta EXCLUSIVELY from the matching pool:
+- informational: ${JSON.stringify(ctaPools.informational)}
+- tool: ${JSON.stringify(ctaPools.tool)}
+- list: ${JSON.stringify(ctaPools.list)}
+- commercial: ${JSON.stringify(ctaPools.commercial)}
+Never mix pools. Never invent CTAs outside the pools. Vary CTAs across the batch.`;
+    const brandBlock = `UNIVERSAL PIN TEMPLATE — identical frame on every pin. Only the middle illustration, the title text, and the CTA label change.
+- Aspect ratio 2:3, 1000x1500.
+- TOP AREA: The pin title in an elegant serif display font, cream/off-white color, set against a solid brand-color band OR over the illustration with a translucent brand overlay for legibility. Title is the largest element on the pin.
+- MIDDLE AREA: Illustration or photograph. Use ONLY the ${paletteLine}. Deep/dark brand color for backgrounds, warm accent for highlights, cream for negative space. No stray colors outside the palette.
+- CTA BUTTON (mandatory, lower third ~72-78% down from top): Pill/rounded-rectangle button in the brand's warm accent color (mustard/gold/orange if present in palette, otherwise the lightest palette accent). Dark text on it, bold clean sans, trailing arrow "→". Button label = this brief's cta value verbatim. Must be visibly clickable and high contrast.
+- BOTTOM BAR (mandatory, ~5% tall, full width, flush to the bottom edge): Solid dark brand-color band containing ONLY the website URL in cream/off-white, small clean sans, centered horizontally: "${brandHost}". NO brand name wordmark above or below. NO tagline. NO logo. URL only.
+- Do NOT invent a different URL. No fake logos. No stock-photo watermarks. No social handles.
+${brandFont ? `- Typography direction (title): ${brandFont}.\n` : ""}${brandNotes ? `- Brand notes: ${brandNotes}.\n` : ""}`;
 
     const stylesSubset = [...PIN_STYLES].sort(() => Math.random() - 0.5).slice(0, Math.min(data.count, PIN_STYLES.length));
     const chosenStyles = stylesSubset.length >= data.count
