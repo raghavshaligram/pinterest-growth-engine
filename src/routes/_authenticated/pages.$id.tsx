@@ -85,6 +85,7 @@ function PageDetail() {
 function BriefCard({ b }: { b: { id: string; title: string; style: string; status: string; pin_images: { storage_path: string }[] } }) {
   const qc = useQueryClient();
   const rerender = useServerFn(rerenderBrief);
+  const del = useServerFn(deleteBrief);
   const [url, setUrl] = useState<string | null>(null);
   const path = b.pin_images?.[0]?.storage_path;
   useEffect(() => {
