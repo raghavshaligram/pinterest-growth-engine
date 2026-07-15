@@ -87,6 +87,13 @@ function SchedulePage() {
           <Button variant="outline" onClick={() => queueMut.mutate(undefined)} disabled={queueMut.isPending || draftCount === 0}>
             <CheckCheck className="mr-2 h-4 w-4" />Queue all drafts{draftCount ? ` (${draftCount})` : ""}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => { if (window.confirm(`Delete all ${data?.length ?? 0} scheduled pins? Published pins are kept.`)) wipeMut.mutate(); }}
+            disabled={wipeMut.isPending || !(data?.length)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />Delete all
+          </Button>
           <Button onClick={() => pubMut.mutate()} disabled={pubMut.isPending}><Send className="mr-2 h-4 w-4" />Publish due</Button>
         </div>
       </header>
