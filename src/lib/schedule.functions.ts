@@ -7,22 +7,29 @@ export const listScheduled = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("scheduled_pins")
-      .select("id, scheduled_at, status, pinterest_pin_id, last_error, brief_id, board_id, image_id, pin_briefs(title, page_id), boards(name), pin_images(storage_path)")
+      .select("id, scheduled_at, status, pinterest_pin_id, last_error, brief_id, board_id, image_id, pin_briefs(title, description, hashtags, alt_text, cta, page_id, pages(url, title)), boards(name, pinterest_board_id), pin_images(storage_path, width, height)")
       .order("scheduled_at", { ascending: true })
       .limit(500);
     if (error) throw error;
-    return data ?? [];
+    // Resolve signed image URLs so the detail view can render them.
+    const paths = Array.from(new Set((data ?? []).map((r) => r.pin_images?.storage_path).filter(Boolean) as string[]));
+    const urlMap = new Map<string, string>();
+    await Promise.all(paths.map(async (p) => {
+      const { data: s } = await context.supabase.storage.from("pins").createSignedUrl(p, 3600);
+      if (s?.signedUrl) urlMap.set(p, s.signedUrl);
+    }));
+    return (data ?? []).map((r) => ({ ...r, image_url: r.pin_images?.storage_path ? urlMap.get(r.pin_images.storage_path) ?? null : null }));
   });
 
 // Pinterest anti-ban limits — conservative defaults per account.
 // Keep tight so a fresh/warming account stays under the automated-spam radar.
 const SAFETY = {
   maxPerAccountPerDay: 25,      // account-wide daily cap
-  maxPerBoardPerDay: 5,         // board-level daily cap
+  maxPerBoardPerDay: 10,        // board-level daily cap
   maxSameUrlPerAccountDay: 3,   // same destination URL, per day, all boards
   sameUrlBoardGapDays: 2,       // ≥ N days between reposts of same URL to same board
-  sameUrlAccountGapHours: 6,    // ≥ N hours between any two pins to same URL
-  minMinutesBetweenPins: 20,    // account-wide min gap between any two pins
+  sameUrlAccountGapHours: 4,    // ≥ N hours between any two pins to same URL
+  minMinutesBetweenPins: 15,    // account-wide min gap between any two pins
 } as const;
 
 export const autoSchedule = createServerFn({ method: "POST" })
@@ -308,8 +315,18 @@ export const rescheduleOrCancel = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     if (data.cancel) {
-      const { error } = await context.supabase.from("scheduled_pins").update({ status: "canceled" }).eq("id", data.id);
+      // Delete the scheduled pin entirely so it disappears from the calendar
+      // and the underlying brief becomes eligible for auto-fill again.
+      const { data: row } = await context.supabase
+        .from("scheduled_pins")
+        .select("brief_id, status")
+        .eq("id", data.id)
+        .maybeSingle();
+      const { error } = await context.supabase.from("scheduled_pins").delete().eq("id", data.id);
       if (error) throw error;
+      if (row?.brief_id && row.status !== "published") {
+        await context.supabase.from("pin_briefs").update({ status: "ready" }).eq("id", row.brief_id);
+      }
     } else if (data.scheduled_at) {
       const { error } = await context.supabase.from("scheduled_pins").update({ scheduled_at: data.scheduled_at }).eq("id", data.id);
       if (error) throw error;
