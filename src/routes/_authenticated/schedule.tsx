@@ -31,7 +31,7 @@ function SchedulePage() {
   const wipe = useServerFn(deleteAllScheduled);
   const replace = useServerFn(replaceScheduledPin);
 
-  const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
+  const { data, isLoading, isFetching } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
   // Persist the per-day cadence across visits. This subtree is ssr:false so
   // reading localStorage in the lazy initializer is safe and avoids the race
@@ -151,7 +151,12 @@ function SchedulePage() {
             </div>
           </div>
         ))}
-        {!data?.length && <p className="text-sm text-muted-foreground">Nothing scheduled yet — auto-fill to spread ready pins across the next two weeks.</p>}
+        {(isLoading || isFetching) && !data?.length && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" />Loading schedule…
+          </div>
+        )}
+        {!isLoading && !isFetching && !data?.length && <p className="text-sm text-muted-foreground">Nothing scheduled yet — auto-fill to spread ready pins across the next two weeks.</p>}
       </div>
 
       <PinDetail
@@ -249,19 +254,19 @@ function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, deleting, 
                 )}
               </dl>
 
-              <div className="mt-6 flex justify-end gap-2 border-t pt-4">
+              <div className="mt-6 flex flex-wrap justify-end gap-2 border-t pt-4">
                 {row.status !== "published" && row.status !== "publishing" && (
-                  <Button variant="destructive" onClick={() => onDelete(row.id)} disabled={deleting}>
-                    <Trash2 className="mr-2 h-4 w-4" />Delete
-                  </Button>
-                )}
-                {row.status !== "published" && row.status !== "publishing" && (
-                  <Button variant="outline" onClick={() => onReplace(row.id)} disabled={replacing} title="Swap in another ready pin, keeping this slot">
+                  <Button size="sm" variant="outline" onClick={() => onReplace(row.id)} disabled={replacing} title="Swap in another ready pin, keeping this slot">
                     <RefreshCw className={`mr-2 h-4 w-4 ${replacing ? "animate-spin" : ""}`} />Replace pin
                   </Button>
                 )}
+                {row.status !== "published" && row.status !== "publishing" && (
+                  <Button size="sm" variant="destructive" onClick={() => onDelete(row.id)} disabled={deleting}>
+                    <Trash2 className="mr-2 h-4 w-4" />Delete
+                  </Button>
+                )}
                 {row.status === "draft" && (
-                  <Button onClick={() => onQueue(row.id)} disabled={queuing}>
+                  <Button size="sm" onClick={() => onQueue(row.id)} disabled={queuing}>
                     <Check className="mr-2 h-4 w-4" />Queue for publishing
                   </Button>
                 )}
