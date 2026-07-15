@@ -32,12 +32,15 @@ function SchedulePage() {
 
   const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
-  // Persist the per-day cadence across visits — read on mount, save on change.
-  const [perDay, setPerDay] = useState(5);
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("pf:perDay") : null;
-    if (saved) setPerDay(Math.max(1, Math.min(25, parseInt(saved, 10) || 5)));
-  }, []);
+  // Persist the per-day cadence across visits. This subtree is ssr:false so
+  // reading localStorage in the lazy initializer is safe and avoids the race
+  // where the save-effect overwrites storage before the load-effect fires.
+  const [perDay, setPerDay] = useState<number>(() => {
+    if (typeof window === "undefined") return 5;
+    const saved = window.localStorage.getItem("pf:perDay");
+    const n = saved ? parseInt(saved, 10) : NaN;
+    return Number.isFinite(n) ? Math.max(1, Math.min(25, n)) : 5;
+  });
   useEffect(() => {
     if (typeof window !== "undefined") window.localStorage.setItem("pf:perDay", String(perDay));
   }, [perDay]);
