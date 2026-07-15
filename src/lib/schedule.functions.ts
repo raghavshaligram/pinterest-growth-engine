@@ -7,11 +7,18 @@ export const listScheduled = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("scheduled_pins")
-      .select("id, scheduled_at, status, pinterest_pin_id, last_error, brief_id, board_id, image_id, pin_briefs(title, page_id), boards(name), pin_images(storage_path)")
+      .select("id, scheduled_at, status, pinterest_pin_id, last_error, brief_id, board_id, image_id, pin_briefs(title, description, hashtags, alt_text, cta, page_id, pages(url, title)), boards(name, pinterest_board_id), pin_images(storage_path, width, height)")
       .order("scheduled_at", { ascending: true })
       .limit(500);
     if (error) throw error;
-    return data ?? [];
+    // Resolve signed image URLs so the detail view can render them.
+    const paths = Array.from(new Set((data ?? []).map((r) => r.pin_images?.storage_path).filter(Boolean) as string[]));
+    const urlMap = new Map<string, string>();
+    await Promise.all(paths.map(async (p) => {
+      const { data: s } = await context.supabase.storage.from("pins").createSignedUrl(p, 3600);
+      if (s?.signedUrl) urlMap.set(p, s.signedUrl);
+    }));
+    return (data ?? []).map((r) => ({ ...r, image_url: r.pin_images?.storage_path ? urlMap.get(r.pin_images.storage_path) ?? null : null }));
   });
 
 // Pinterest anti-ban limits — conservative defaults per account.
