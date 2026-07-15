@@ -159,8 +159,10 @@ function SchedulePage() {
         onOpenChange={(v) => !v && setOpen(null)}
         onDelete={(id) => delMut.mutate(id)}
         onQueue={(id) => queueMut.mutate([id])}
+        onReplace={(id) => replaceMut.mutate(id)}
         deleting={delMut.isPending}
         queuing={queueMut.isPending}
+        replacing={replaceMut.isPending}
       />
     </div>
   );
