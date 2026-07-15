@@ -315,8 +315,18 @@ export const rescheduleOrCancel = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     if (data.cancel) {
-      const { error } = await context.supabase.from("scheduled_pins").update({ status: "canceled" }).eq("id", data.id);
+      // Delete the scheduled pin entirely so it disappears from the calendar
+      // and the underlying brief becomes eligible for auto-fill again.
+      const { data: row } = await context.supabase
+        .from("scheduled_pins")
+        .select("brief_id, status")
+        .eq("id", data.id)
+        .maybeSingle();
+      const { error } = await context.supabase.from("scheduled_pins").delete().eq("id", data.id);
       if (error) throw error;
+      if (row?.brief_id && row.status !== "published") {
+        await context.supabase.from("pin_briefs").update({ status: "ready" }).eq("id", row.brief_id);
+      }
     } else if (data.scheduled_at) {
       const { error } = await context.supabase.from("scheduled_pins").update({ scheduled_at: data.scheduled_at }).eq("id", data.id);
       if (error) throw error;
