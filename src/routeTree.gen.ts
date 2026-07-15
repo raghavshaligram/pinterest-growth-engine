@@ -9,38 +9,282 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSitesRouteImport } from './routes/_authenticated/sites'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedScheduleRouteImport } from './routes/_authenticated/schedule'
+import { Route as AuthenticatedPinsRouteImport } from './routes/_authenticated/pins'
+import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
+import { Route as AuthenticatedKeywordsRouteImport } from './routes/_authenticated/keywords'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated/boards'
+import { Route as AuthenticatedPagesIndexRouteImport } from './routes/_authenticated/pages.index'
+import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings.integrations'
+import { Route as AuthenticatedPagesIdRouteImport } from './routes/_authenticated/pages.$id'
+import { Route as ApiPublicCronSerpRouteImport } from './routes/api/public/cron/serp'
+import { Route as ApiPublicCronPublishRouteImport } from './routes/api/public/cron/publish'
+import { Route as ApiPublicCronImagesRouteImport } from './routes/api/public/cron/images'
+import { Route as ApiPublicCronCrawlRouteImport } from './routes/api/public/cron/crawl'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSitesRoute = AuthenticatedSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedScheduleRoute = AuthenticatedScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPinsRoute = AuthenticatedPinsRouteImport.update({
+  id: '/pins',
+  path: '/pins',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLogsRoute = AuthenticatedLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedKeywordsRoute = AuthenticatedKeywordsRouteImport.update({
+  id: '/keywords',
+  path: '/keywords',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBoardsRoute = AuthenticatedBoardsRouteImport.update({
+  id: '/boards',
+  path: '/boards',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPagesIndexRoute = AuthenticatedPagesIndexRouteImport.update({
+  id: '/pages/',
+  path: '/pages/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsIntegrationsRoute =
+  AuthenticatedSettingsIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedPagesIdRoute = AuthenticatedPagesIdRouteImport.update({
+  id: '/pages/$id',
+  path: '/pages/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicCronSerpRoute = ApiPublicCronSerpRouteImport.update({
+  id: '/api/public/cron/serp',
+  path: '/api/public/cron/serp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronPublishRoute = ApiPublicCronPublishRouteImport.update({
+  id: '/api/public/cron/publish',
+  path: '/api/public/cron/publish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronImagesRoute = ApiPublicCronImagesRouteImport.update({
+  id: '/api/public/cron/images',
+  path: '/api/public/cron/images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronCrawlRoute = ApiPublicCronCrawlRouteImport.update({
+  id: '/api/public/cron/crawl',
+  path: '/api/public/cron/crawl',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/boards': typeof AuthenticatedBoardsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/keywords': typeof AuthenticatedKeywordsRoute
+  '/logs': typeof AuthenticatedLogsRoute
+  '/pins': typeof AuthenticatedPinsRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
+  '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/sites': typeof AuthenticatedSitesRoute
+  '/pages/$id': typeof AuthenticatedPagesIdRoute
+  '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/pages/': typeof AuthenticatedPagesIndexRoute
+  '/api/public/cron/crawl': typeof ApiPublicCronCrawlRoute
+  '/api/public/cron/images': typeof ApiPublicCronImagesRoute
+  '/api/public/cron/publish': typeof ApiPublicCronPublishRoute
+  '/api/public/cron/serp': typeof ApiPublicCronSerpRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/boards': typeof AuthenticatedBoardsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/keywords': typeof AuthenticatedKeywordsRoute
+  '/logs': typeof AuthenticatedLogsRoute
+  '/pins': typeof AuthenticatedPinsRoute
+  '/schedule': typeof AuthenticatedScheduleRoute
+  '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/sites': typeof AuthenticatedSitesRoute
+  '/pages/$id': typeof AuthenticatedPagesIdRoute
+  '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/pages': typeof AuthenticatedPagesIndexRoute
+  '/api/public/cron/crawl': typeof ApiPublicCronCrawlRoute
+  '/api/public/cron/images': typeof ApiPublicCronImagesRoute
+  '/api/public/cron/publish': typeof ApiPublicCronPublishRoute
+  '/api/public/cron/serp': typeof ApiPublicCronSerpRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/boards': typeof AuthenticatedBoardsRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/keywords': typeof AuthenticatedKeywordsRoute
+  '/_authenticated/logs': typeof AuthenticatedLogsRoute
+  '/_authenticated/pins': typeof AuthenticatedPinsRoute
+  '/_authenticated/schedule': typeof AuthenticatedScheduleRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/_authenticated/sites': typeof AuthenticatedSitesRoute
+  '/_authenticated/pages/$id': typeof AuthenticatedPagesIdRoute
+  '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
+  '/_authenticated/pages/': typeof AuthenticatedPagesIndexRoute
+  '/api/public/cron/crawl': typeof ApiPublicCronCrawlRoute
+  '/api/public/cron/images': typeof ApiPublicCronImagesRoute
+  '/api/public/cron/publish': typeof ApiPublicCronPublishRoute
+  '/api/public/cron/serp': typeof ApiPublicCronSerpRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/boards'
+    | '/dashboard'
+    | '/keywords'
+    | '/logs'
+    | '/pins'
+    | '/schedule'
+    | '/settings'
+    | '/sites'
+    | '/pages/$id'
+    | '/settings/integrations'
+    | '/pages/'
+    | '/api/public/cron/crawl'
+    | '/api/public/cron/images'
+    | '/api/public/cron/publish'
+    | '/api/public/cron/serp'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/boards'
+    | '/dashboard'
+    | '/keywords'
+    | '/logs'
+    | '/pins'
+    | '/schedule'
+    | '/settings'
+    | '/sites'
+    | '/pages/$id'
+    | '/settings/integrations'
+    | '/pages'
+    | '/api/public/cron/crawl'
+    | '/api/public/cron/images'
+    | '/api/public/cron/publish'
+    | '/api/public/cron/serp'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/_authenticated/boards'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/keywords'
+    | '/_authenticated/logs'
+    | '/_authenticated/pins'
+    | '/_authenticated/schedule'
+    | '/_authenticated/settings'
+    | '/_authenticated/sites'
+    | '/_authenticated/pages/$id'
+    | '/_authenticated/settings/integrations'
+    | '/_authenticated/pages/'
+    | '/api/public/cron/crawl'
+    | '/api/public/cron/images'
+    | '/api/public/cron/publish'
+    | '/api/public/cron/serp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiPublicCronCrawlRoute: typeof ApiPublicCronCrawlRoute
+  ApiPublicCronImagesRoute: typeof ApiPublicCronImagesRoute
+  ApiPublicCronPublishRoute: typeof ApiPublicCronPublishRoute
+  ApiPublicCronSerpRoute: typeof ApiPublicCronSerpRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +292,167 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/sites': {
+      id: '/_authenticated/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof AuthenticatedSitesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedule': {
+      id: '/_authenticated/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof AuthenticatedScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pins': {
+      id: '/_authenticated/pins'
+      path: '/pins'
+      fullPath: '/pins'
+      preLoaderRoute: typeof AuthenticatedPinsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/logs': {
+      id: '/_authenticated/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof AuthenticatedLogsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/keywords': {
+      id: '/_authenticated/keywords'
+      path: '/keywords'
+      fullPath: '/keywords'
+      preLoaderRoute: typeof AuthenticatedKeywordsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/boards': {
+      id: '/_authenticated/boards'
+      path: '/boards'
+      fullPath: '/boards'
+      preLoaderRoute: typeof AuthenticatedBoardsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pages/': {
+      id: '/_authenticated/pages/'
+      path: '/pages'
+      fullPath: '/pages/'
+      preLoaderRoute: typeof AuthenticatedPagesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/integrations': {
+      id: '/_authenticated/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof AuthenticatedSettingsIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/pages/$id': {
+      id: '/_authenticated/pages/$id'
+      path: '/pages/$id'
+      fullPath: '/pages/$id'
+      preLoaderRoute: typeof AuthenticatedPagesIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/cron/serp': {
+      id: '/api/public/cron/serp'
+      path: '/api/public/cron/serp'
+      fullPath: '/api/public/cron/serp'
+      preLoaderRoute: typeof ApiPublicCronSerpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/publish': {
+      id: '/api/public/cron/publish'
+      path: '/api/public/cron/publish'
+      fullPath: '/api/public/cron/publish'
+      preLoaderRoute: typeof ApiPublicCronPublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/images': {
+      id: '/api/public/cron/images'
+      path: '/api/public/cron/images'
+      fullPath: '/api/public/cron/images'
+      preLoaderRoute: typeof ApiPublicCronImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/crawl': {
+      id: '/api/public/cron/crawl'
+      path: '/api/public/cron/crawl'
+      fullPath: '/api/public/cron/crawl'
+      preLoaderRoute: typeof ApiPublicCronCrawlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedSettingsRouteChildren {
+  AuthenticatedSettingsIntegrationsRoute: typeof AuthenticatedSettingsIntegrationsRoute
+}
+
+const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
+  AuthenticatedSettingsIntegrationsRoute:
+    AuthenticatedSettingsIntegrationsRoute,
+}
+
+const AuthenticatedSettingsRouteWithChildren =
+  AuthenticatedSettingsRoute._addFileChildren(
+    AuthenticatedSettingsRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBoardsRoute: typeof AuthenticatedBoardsRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedKeywordsRoute: typeof AuthenticatedKeywordsRoute
+  AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
+  AuthenticatedPinsRoute: typeof AuthenticatedPinsRoute
+  AuthenticatedScheduleRoute: typeof AuthenticatedScheduleRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
+  AuthenticatedSitesRoute: typeof AuthenticatedSitesRoute
+  AuthenticatedPagesIdRoute: typeof AuthenticatedPagesIdRoute
+  AuthenticatedPagesIndexRoute: typeof AuthenticatedPagesIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBoardsRoute: AuthenticatedBoardsRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedKeywordsRoute: AuthenticatedKeywordsRoute,
+  AuthenticatedLogsRoute: AuthenticatedLogsRoute,
+  AuthenticatedPinsRoute: AuthenticatedPinsRoute,
+  AuthenticatedScheduleRoute: AuthenticatedScheduleRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
+  AuthenticatedSitesRoute: AuthenticatedSitesRoute,
+  AuthenticatedPagesIdRoute: AuthenticatedPagesIdRoute,
+  AuthenticatedPagesIndexRoute: AuthenticatedPagesIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiPublicCronCrawlRoute: ApiPublicCronCrawlRoute,
+  ApiPublicCronImagesRoute: ApiPublicCronImagesRoute,
+  ApiPublicCronPublishRoute: ApiPublicCronPublishRoute,
+  ApiPublicCronSerpRoute: ApiPublicCronSerpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

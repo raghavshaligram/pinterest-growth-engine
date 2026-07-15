@@ -1,0 +1,113 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const PIN_STYLES = [
+  "problem-solver", "how-to", "checklist", "comparison", "calculator",
+  "mistakes-to-avoid", "before-after", "listicle", "faq", "quick-tip",
+  "infographic", "photo", "illustration", "minimal", "seasonal",
+] as const;
+
+export const generateBriefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { pageId: string; count?: number }) =>
+    z.object({ pageId: z.string().uuid(), count: z.number().int().min(1).max(30).default(10) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { requireIntegration, markIntegration } = await import("./integrations.server");
+    const { openaiJSON } = await import("./openai.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cfg = await requireIntegration(context.userId, "openai");
+
+    const { data: page, error } = await context.supabase.from("pages").select("*").eq("id", data.pageId).single();
+    if (error || !page) throw error ?? new Error("Page not found");
+    const analysis = (page.analysis ?? {}) as {
+      topic?: string; primary_keyword?: string; secondary_keywords?: string[]; audience?: string; category?: string;
+    };
+    if (!analysis.primary_keyword) throw new Error("Analyze the page first.");
+
+    const stylesSubset = [...PIN_STYLES].sort(() => Math.random() - 0.5).slice(0, Math.min(data.count, PIN_STYLES.length));
+    const chosenStyles = stylesSubset.length >= data.count
+      ? stylesSubset.slice(0, data.count)
+      : [...stylesSubset, ...Array(data.count - stylesSubset.length).fill("how-to")];
+
+    try {
+      type BriefsResp = {
+        briefs: Array<{
+          style: string;
+          title: string;
+          description: string;
+          hashtags: string[];
+          alt_text: string;
+          cta: string;
+          image_prompt: string;
+        }>;
+      };
+      const resp = await openaiJSON<BriefsResp>({
+        apiKey: cfg.api_key,
+        model: "gpt-4o-mini",
+        system: "You are a Pinterest pin strategist. Return strict JSON. Titles under 100 chars, descriptions 150-450 chars, natural keyword use (no stuffing), 5-8 hashtags including the primary keyword.",
+        user: `Create ${data.count} unique Pinterest pin briefs for this page. Use each style once from this list where possible: ${JSON.stringify(chosenStyles)}.
+
+Return JSON: { briefs: [{ style, title, description, hashtags: [], alt_text, cta, image_prompt }] }.
+
+The image_prompt is for a text-to-image model producing a vertical 2:3 Pinterest pin at 1000x1500. Include composition, style (photography/illustration/flat/vintage/infographic/split/minimal etc), color palette, and any overlay text WITH exact typography direction. Be different for each brief.
+
+Page: ${page.url}
+Topic: ${analysis.topic ?? ""}
+Primary keyword: ${analysis.primary_keyword}
+Secondary: ${JSON.stringify(analysis.secondary_keywords ?? [])}
+Audience: ${analysis.audience ?? ""}
+Category: ${analysis.category ?? ""}`,
+      });
+
+      const rows = resp.briefs.slice(0, data.count).map((b) => ({
+        user_id: context.userId,
+        page_id: page.id,
+        style: b.style,
+        title: b.title,
+        description: b.description,
+        hashtags: b.hashtags ?? [],
+        alt_text: b.alt_text ?? null,
+        cta: b.cta ?? null,
+        image_prompt: b.image_prompt,
+        status: "image_pending" as const,
+      }));
+      const { data: inserted, error: insErr } = await supabaseAdmin.from("pin_briefs").insert(rows).select("id");
+      if (insErr) throw insErr;
+
+      // Enqueue image jobs
+      const jobs = inserted!.map((r) => ({
+        user_id: context.userId,
+        kind: "generate_image" as const,
+        payload: { brief_id: r.id },
+      }));
+      await supabaseAdmin.from("jobs").insert(jobs);
+
+      await markIntegration(context.userId, "openai", "ok");
+      return { created: inserted!.length };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await markIntegration(context.userId, "openai", "error", msg);
+      throw e;
+    }
+  });
+
+export const listBriefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("pin_briefs")
+      .select("id, style, title, status, page_id, created_at, pin_images(storage_path)")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return data ?? [];
+  });
+
+export const runImageWorker = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { processImageQueueForUser } = await import("./image-worker.server");
+    return await processImageQueueForUser(context.userId, 5);
+  });
