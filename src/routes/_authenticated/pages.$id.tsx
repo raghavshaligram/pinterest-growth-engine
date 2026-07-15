@@ -132,14 +132,26 @@ function BriefCard({ b }: { b: { id: string; title: string; style: string; statu
               {b.status === "image_pending" ? "Waiting to render…" : "No image"}
             </div>
           )}
-          <Button
-            size="sm" variant="secondary"
-            className="absolute right-2 top-2 h-8 gap-1"
-            onClick={(e) => { e.stopPropagation(); reMut.mutate(); }} disabled={reMut.isPending}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${reMut.isPending ? "animate-spin" : ""}`} />
-            Rerender
-          </Button>
+          <div className="absolute right-2 top-2 flex gap-1">
+            <Button
+              size="sm" variant="secondary" className="h-8 gap-1"
+              onClick={(e) => { e.stopPropagation(); reMut.mutate(); }} disabled={reMut.isPending}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${reMut.isPending ? "animate-spin" : ""}`} />
+              Rerender
+            </Button>
+            <Button
+              size="icon" variant="destructive" className="h-8 w-8"
+              title="Delete pin"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm("Delete this pin? This removes the brief, image, and any scheduled entries.")) delMut.mutate();
+              }}
+              disabled={delMut.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
         <div className="space-y-1 p-3">
           <div className="text-xs uppercase text-muted-foreground">{b.style}</div>
