@@ -277,6 +277,12 @@ export const rerenderBrief = createServerFn({ method: "POST" })
     if (imgs?.length) {
       const paths = imgs.map((i) => i.storage_path).filter(Boolean) as string[];
       if (paths.length) await supabaseAdmin.storage.from("pins").remove(paths);
+      // Detach any scheduled pins from the old image so the FK delete succeeds
+      // and the scheduler row is ready to be re-pointed at the new image.
+      await supabaseAdmin.from("scheduled_pins")
+        .update({ image_id: null })
+        .eq("brief_id", data.briefId)
+        .in("status", ["draft", "queued", "failed"]);
       await supabaseAdmin.from("pin_images").delete().eq("brief_id", data.briefId);
     }
     await supabaseAdmin.from("pin_briefs").update({ status: "image_pending" }).eq("id", data.briefId);
@@ -289,6 +295,17 @@ export const rerenderBrief = createServerFn({ method: "POST" })
     // Kick the worker inline for THIS brief only, so other queued jobs don't steal the slot
     const { processImageQueueForUser } = await import("./image-worker.server");
     await processImageQueueForUser(context.userId, 1, { briefId: data.briefId });
+    // Repoint any scheduled_pins for this brief at the freshly rendered image
+    // so the schedule view shows the new artwork instead of a blank slot.
+    const { data: newImg } = await supabaseAdmin
+      .from("pin_images").select("id").eq("brief_id", data.briefId)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (newImg?.id) {
+      await supabaseAdmin.from("scheduled_pins")
+        .update({ image_id: newImg.id })
+        .eq("brief_id", data.briefId)
+        .is("image_id", null);
+    }
     return { ok: true };
   });
 
