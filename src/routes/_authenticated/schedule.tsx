@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins } from "@/lib/schedule.functions";
+import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins, deleteAllScheduled } from "@/lib/schedule.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
   head: () => ({ meta: [{ title: "Schedule — PinForge" }] }),
@@ -28,10 +28,19 @@ function SchedulePage() {
   const pipeline = useServerFn(runFullPipeline);
 
   const queue = useServerFn(queuePins);
+  const wipe = useServerFn(deleteAllScheduled);
 
   const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
+  // Persist the per-day cadence across visits — read on mount, save on change.
   const [perDay, setPerDay] = useState(5);
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("pf:perDay") : null;
+    if (saved) setPerDay(Math.max(1, Math.min(25, parseInt(saved, 10) || 5)));
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("pf:perDay", String(perDay));
+  }, [perDay]);
 
   const autoMut = useMutation({ mutationFn: () => auto({ data: { days: 14, perDay, hoursStart: 9, hoursEnd: 21 } }),
     onSuccess: (r) => { toast.success(r.reason ?? `Drafted ${r.scheduled} pins — review, then queue`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
@@ -43,6 +52,9 @@ function SchedulePage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); toast.success("Deleted"); } });
   const queueMut = useMutation({ mutationFn: (ids?: string[]) => queue({ data: ids ? { ids } : { all: true } }),
     onSuccess: (r) => { toast.success(`Queued ${r.queued} pin${r.queued === 1 ? "" : "s"}`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
+  const wipeMut = useMutation({ mutationFn: () => wipe({ data: {} }),
+    onSuccess: (r) => { toast.success(`Deleted ${r.deleted} scheduled pin${r.deleted === 1 ? "" : "s"}`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const pipeMut = useMutation({ mutationFn: () => pipeline({ data: {} }),
     onSuccess: (r) => { toast.success(`Analyzed ${r.analyzed} · Briefs for ${r.briefsFor} pages · Queued ${r.imagesQueued} images${r.errors.length ? ` · ${r.errors.length} errors` : ""}`); },
@@ -74,6 +86,13 @@ function SchedulePage() {
           <Button variant="outline" onClick={() => autoMut.mutate()} disabled={autoMut.isPending}><Wand2 className="mr-2 h-4 w-4" />Auto-fill 14 days</Button>
           <Button variant="outline" onClick={() => queueMut.mutate(undefined)} disabled={queueMut.isPending || draftCount === 0}>
             <CheckCheck className="mr-2 h-4 w-4" />Queue all drafts{draftCount ? ` (${draftCount})` : ""}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => { if (window.confirm(`Delete all ${data?.length ?? 0} scheduled pins? Published pins are kept.`)) wipeMut.mutate(); }}
+            disabled={wipeMut.isPending || !(data?.length)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />Delete all
           </Button>
           <Button onClick={() => pubMut.mutate()} disabled={pubMut.isPending}><Send className="mr-2 h-4 w-4" />Publish due</Button>
         </div>

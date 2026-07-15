@@ -26,6 +26,7 @@ export const listScheduled = createServerFn({ method: "GET" })
 const SAFETY = {
   maxPerAccountPerDay: 25,      // account-wide daily cap
   maxPerBoardPerDay: 10,        // board-level daily cap
+  maxPerPagePerDay: 1,          // never schedule the same source page twice on one day
   maxSameUrlPerAccountDay: 3,   // same destination URL, per day, all boards
   sameUrlBoardGapDays: 2,       // ≥ N days between reposts of same URL to same board
   sameUrlAccountGapHours: 4,    // ≥ N hours between any two pins to same URL
@@ -72,19 +73,21 @@ export const autoSchedule = createServerFn({ method: "POST" })
 
     type Existing = {
       when: number; boardId: string | null;
-      url: string; imageId: string | null;
+      url: string; imageId: string | null; pageId: string | null;
     };
     const history: Existing[] = (existing ?? []).map((e) => ({
       when: new Date(e.scheduled_at).getTime(),
       boardId: e.board_id,
       url: ((e as { pin_briefs?: { pages?: { url?: string } } }).pin_briefs?.pages?.url) ?? "",
       imageId: e.image_id,
+      pageId: ((e as { pin_briefs?: { page_id?: string } }).pin_briefs?.page_id) ?? null,
     }));
     const usedImageIds = new Set(history.map((h) => h.imageId).filter(Boolean) as string[]);
 
     const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
     const perDayAccount = new Map<string, number>();
     const perDayBoard = new Map<string, number>();          // key: `${day}|${boardId}`
+    const perDayPage = new Map<string, number>();           // key: `${day}|${pageId}`
     const perDayUrl = new Map<string, number>();            // key: `${day}|${url}`
     const lastByUrlBoard = new Map<string, number>();       // key: `${url}|${boardId}` -> ts
     const lastByUrl = new Map<string, number>();            // key: url -> ts
@@ -94,6 +97,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
       const dk = dayKey(h.when);
       perDayAccount.set(dk, (perDayAccount.get(dk) ?? 0) + 1);
       if (h.boardId) perDayBoard.set(`${dk}|${h.boardId}`, (perDayBoard.get(`${dk}|${h.boardId}`) ?? 0) + 1);
+      if (h.pageId) perDayPage.set(`${dk}|${h.pageId}`, (perDayPage.get(`${dk}|${h.pageId}`) ?? 0) + 1);
       if (h.url) {
         perDayUrl.set(`${dk}|${h.url}`, (perDayUrl.get(`${dk}|${h.url}`) ?? 0) + 1);
         const prevUrl = lastByUrl.get(h.url) ?? 0;
@@ -148,6 +152,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
     for (const brief of ordered) {
       const img = brief.pin_images?.[0];
       const pageUrl = (brief as { pages?: { url?: string } }).pages?.url ?? "";
+      const pageId = (brief as { page_id?: string }).page_id ?? "";
       if (!img || !pageUrl) continue;
       // Never repost the exact same rendered image
       if (usedImageIds.has(img.id)) continue;
@@ -167,6 +172,9 @@ export const autoSchedule = createServerFn({ method: "POST" })
 
         // Account daily cap
         if ((perDayAccount.get(dk) ?? 0) >= SAFETY.maxPerAccountPerDay) continue;
+
+        // Per-page daily cap — never schedule the same source page twice on one day
+        if (pageId && (perDayPage.get(`${dk}|${pageId}`) ?? 0) >= SAFETY.maxPerPagePerDay) continue;
 
         // Account-wide min-gap between any two pins
         if (accountTimestamps.some((t) => Math.abs(t - when) < SAFETY.minMinutesBetweenPins * 60_000)) continue;
@@ -201,6 +209,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
         });
         perDayAccount.set(dk, (perDayAccount.get(dk) ?? 0) + 1);
         perDayBoard.set(`${dk}|${chosenBoard}`, (perDayBoard.get(`${dk}|${chosenBoard}`) ?? 0) + 1);
+        if (pageId) perDayPage.set(`${dk}|${pageId}`, (perDayPage.get(`${dk}|${pageId}`) ?? 0) + 1);
         perDayUrl.set(`${dk}|${pageUrl}`, (perDayUrl.get(`${dk}|${pageUrl}`) ?? 0) + 1);
         lastByUrl.set(pageUrl, when);
         lastByUrlBoard.set(`${pageUrl}|${chosenBoard}`, when);
@@ -363,4 +372,31 @@ export const queuePins = createServerFn({ method: "POST" })
     const { data: rows, error } = await q.select("id");
     if (error) throw error;
     return { queued: rows?.length ?? 0 };
+  });
+
+// Wipe every scheduled pin the user hasn't already sent to Pinterest, and flip
+// the underlying briefs back to "ready" so auto-fill can pick them up again.
+export const deleteAllScheduled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { includePublished?: boolean }) =>
+    z.object({ includePublished: z.boolean().optional() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const statuses = (data.includePublished
+      ? ["draft", "queued", "publishing", "failed", "canceled", "exported", "published"]
+      : ["draft", "queued", "failed", "canceled", "exported"]) as ("draft" | "queued" | "publishing" | "failed" | "canceled" | "exported" | "published")[];
+    const { data: rows } = await context.supabase
+      .from("scheduled_pins").select("id, brief_id, status")
+      .in("status", statuses);
+    const ids = (rows ?? []).map((r) => r.id);
+    if (!ids.length) return { deleted: 0 };
+    const briefIds = Array.from(new Set((rows ?? [])
+      .filter((r) => r.status !== "published")
+      .map((r) => r.brief_id).filter(Boolean) as string[]));
+    const { error } = await context.supabase.from("scheduled_pins").delete().in("id", ids);
+    if (error) throw error;
+    if (briefIds.length) {
+      await context.supabase.from("pin_briefs").update({ status: "ready" }).in("id", briefIds);
+    }
+    return { deleted: ids.length };
   });
