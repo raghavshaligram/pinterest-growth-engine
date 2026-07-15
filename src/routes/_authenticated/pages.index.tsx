@@ -24,11 +24,16 @@ function PagesPage() {
   const analyze = useServerFn(analyzePage);
   const gen = useServerFn(generateBriefs);
   const imgFn = useServerFn(runImageWorker);
+  const renderPage = useServerFn(renderImagesForPage);
   const pipeline = useServerFn(runFullPipeline);
   const setExcluded = useServerFn(setPageExcluded);
   const autoExclude = useServerFn(autoExcludePages);
 
   const [showExcluded, setShowExcluded] = useState(false);
+  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
+  const [renderAllRunning, setRenderAllRunning] = useState(false);
+  const stopRef = useState({ v: false })[0];
+
 
   const { data } = useQuery({ queryKey: ["pages"], queryFn: () => list() });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["pages"] });
