@@ -207,9 +207,9 @@ export const listBriefs = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("pin_briefs")
-      .select("id, style, title, status, page_id, created_at, pin_images(storage_path)")
+      .select("id, style, title, description, hashtags, alt_text, cta, status, page_id, created_at, pages(url, title), pin_images(storage_path, width, height)")
       .order("created_at", { ascending: false })
-      .limit(60);
+      .limit(500);
     if (error) throw error;
     return data ?? [];
   });
