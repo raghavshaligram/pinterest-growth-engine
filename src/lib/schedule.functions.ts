@@ -333,3 +333,17 @@ export const rescheduleOrCancel = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const queuePins = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { ids?: string[]; all?: boolean }) =>
+    z.object({ ids: z.array(z.string().uuid()).optional(), all: z.boolean().optional() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase.from("scheduled_pins").update({ status: "queued" }).eq("status", "draft");
+    if (data.ids?.length) q = q.in("id", data.ids);
+    else if (!data.all) return { queued: 0 };
+    const { data: rows, error } = await q.select("id");
+    if (error) throw error;
+    return { queued: rows?.length ?? 0 };
+  });
