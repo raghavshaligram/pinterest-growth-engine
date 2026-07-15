@@ -26,6 +26,7 @@ export const listScheduled = createServerFn({ method: "GET" })
 const SAFETY = {
   maxPerAccountPerDay: 25,      // account-wide daily cap
   maxPerBoardPerDay: 10,        // board-level daily cap
+  maxPerPagePerDay: 1,          // never schedule the same source page twice on one day
   maxSameUrlPerAccountDay: 3,   // same destination URL, per day, all boards
   sameUrlBoardGapDays: 2,       // ≥ N days between reposts of same URL to same board
   sameUrlAccountGapHours: 4,    // ≥ N hours between any two pins to same URL
