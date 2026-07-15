@@ -73,6 +73,7 @@ ${brandFont ? `- Typography direction (title): ${brandFont}.\n` : ""}${brandNote
       type BriefsResp = {
         briefs: Array<{
           style: string;
+          intent: "informational" | "tool" | "list" | "commercial";
           title: string;
           description: string;
           hashtags: string[];
@@ -84,18 +85,26 @@ ${brandFont ? `- Typography direction (title): ${brandFont}.\n` : ""}${brandNote
       const resp = await openaiJSON<BriefsResp>({
         apiKey: cfg.api_key,
         model: "gpt-4o-mini",
-        system: "You are a Pinterest pin strategist. Return strict JSON. Titles under 100 chars, descriptions 150-450 chars, natural keyword use (no stuffing), 5-8 hashtags including the primary keyword. Every pin has an action CTA.",
+        system: `You are a Pinterest SEO strategist. Return strict JSON. Every pin has:
+- title: <=100 chars, PRIMARY KEYWORD in the first 40 chars, curiosity-driven, no clickbait, no ALL CAPS.
+- description: 150-450 chars, natural sentences, primary keyword in first 50 chars, weave in 2-3 secondary keywords, end with the CTA phrase as a call to action.
+- alt_text: <=250 chars, LITERAL visual description of what's in the image ("gloved hand digging beside green rain barrel next to garden shed"), include primary keyword once, NOT marketing copy.
+- hashtags: 4-6, lowercase, no spaces, include the primary keyword as a hashtag plus secondaries; no # in the strings.
+- cta: chosen from the intent-matched pool ONLY.
+- intent: one of informational|tool|list|commercial.`,
         user: `Create ${data.count} unique Pinterest pin briefs for this page. Use each style once from this list where possible: ${JSON.stringify(chosenStyles)}.
 
-Return JSON: { briefs: [{ style, title, description, hashtags: [], alt_text, cta, image_prompt }] }.
+Return JSON: { briefs: [{ style, intent, title, description, hashtags: [], alt_text, cta, image_prompt }] }.
 
-CTA RULES: ${ctaGuidance}
+CTA & INTENT RULES:
+${ctaGuidance}
 
-The image_prompt is for a text-to-image model producing a vertical 2:3 Pinterest pin at 1000x1500. Include composition, style (photography/illustration/flat/vintage/infographic/split/minimal etc), and any overlay text WITH exact typography direction. Vary composition/style per brief, but keep the brand lock IDENTICAL on every pin. The image_prompt MUST explicitly describe a visible CTA button rendering the exact cta text.
+The image_prompt is for a text-to-image model producing a vertical 2:3 Pinterest pin at 1000x1500. Describe the middle illustration/photo, composition, and mood. Vary the middle imagery per brief. The universal template below is IDENTICAL on every pin — describe it verbatim at the end of every image_prompt.
 
 ${brandBlock}
 
-Every image_prompt MUST end with this exact line: "CTA button (lower third): [cta text] →. Bottom-center footer text: ${brandHost}. Small wordmark: ${brandName}. Palette: ${brandColors.join(", ") || "cohesive brand palette"}." — replace [cta text] with this brief's cta value.
+Every image_prompt MUST END with this exact line (substitute [cta text] with this brief's cta):
+"UNIVERSAL FRAME: Title in cream serif across the top over brand-color overlay. CTA button in warm accent color at ~75% down reading [cta text]. Bottom bar: solid dark brand-color band, full width, containing only the centered URL text \\"${brandHost}\\" in cream small sans. No wordmark, no logo, no tagline — URL only in the bottom bar. Palette: ${brandColors.join(", ") || "cohesive brand palette"}."
 
 Page: ${page.url}
 Topic: ${analysis.topic ?? ""}
@@ -109,6 +118,7 @@ Category: ${analysis.category ?? ""}`,
         user_id: context.userId,
         page_id: page.id,
         style: b.style,
+        intent: (["informational", "tool", "list", "commercial"].includes(b.intent) ? b.intent : defaultIntent),
         title: b.title,
         description: b.description,
         hashtags: b.hashtags ?? [],
