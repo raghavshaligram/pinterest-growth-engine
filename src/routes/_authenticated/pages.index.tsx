@@ -7,9 +7,11 @@ import { runFullPipeline } from "@/lib/schedule.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sparkles, ImageIcon, Zap, Loader2, EyeOff, Eye, Filter } from "lucide-react";
-import { useState } from "react";
+import { Sparkles, ImageIcon, Zap, Loader2, EyeOff, Eye, Filter, Check, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+
 
 export const Route = createFileRoute("/_authenticated/pages/")({
   head: () => ({ meta: [{ title: "Pages — PinForge" }] }),
