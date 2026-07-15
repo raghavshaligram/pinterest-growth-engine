@@ -25,17 +25,23 @@ function SchedulePage() {
   const resched = useServerFn(rescheduleOrCancel);
   const pipeline = useServerFn(runFullPipeline);
 
+  const queue = useServerFn(queuePins);
+
   const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
 
-  const autoMut = useMutation({ mutationFn: () => auto({ data: { days: 14, perDay: 15, hoursStart: 8, hoursEnd: 22 } }),
-    onSuccess: (r) => { toast.success(r.reason ?? `Scheduled ${r.scheduled} pins`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
+  // Daily posting cadence — one draft per day, spread across 14 days for review.
+  const autoMut = useMutation({ mutationFn: () => auto({ data: { days: 14, perDay: 1, hoursStart: 9, hoursEnd: 21 } }),
+    onSuccess: (r) => { toast.success(r.reason ?? `Drafted ${r.scheduled} pins — review, then queue`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const pubMut = useMutation({ mutationFn: () => pub(),
     onSuccess: (r) => { toast.success(JSON.stringify(r)); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const delMut = useMutation({ mutationFn: (id: string) => resched({ data: { id, cancel: true } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); toast.success("Deleted"); } });
+  const queueMut = useMutation({ mutationFn: (ids?: string[]) => queue({ data: ids ? { ids } : { all: true } }),
+    onSuccess: (r) => { toast.success(`Queued ${r.queued} pin${r.queued === 1 ? "" : "s"}`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const pipeMut = useMutation({ mutationFn: () => pipeline({ data: {} }),
     onSuccess: (r) => { toast.success(`Analyzed ${r.analyzed} · Briefs for ${r.briefsFor} pages · Queued ${r.imagesQueued} images${r.errors.length ? ` · ${r.errors.length} errors` : ""}`); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
