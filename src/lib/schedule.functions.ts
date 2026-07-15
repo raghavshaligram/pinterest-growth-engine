@@ -180,7 +180,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
           image_id: img.id,
           board_id: chosenBoard,
           user_id: context.userId,
-          status: "queued",
+          status: "draft",
         });
         perDayAccount.set(dk, (perDayAccount.get(dk) ?? 0) + 1);
         perDayBoard.set(`${dk}|${chosenBoard}`, (perDayBoard.get(`${dk}|${chosenBoard}`) ?? 0) + 1);
