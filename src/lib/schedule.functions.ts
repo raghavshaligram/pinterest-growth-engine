@@ -66,7 +66,7 @@ export const autoSchedule = createServerFn({ method: "POST" })
       .from("scheduled_pins")
       .select("scheduled_at, board_id, brief_id, image_id, pin_briefs(page_id, pages(url))")
       .eq("user_id", context.userId)
-      .in("status", ["queued", "publishing", "published", "exported"])
+      .in("status", ["draft", "queued", "publishing", "published", "exported"])
       .gte("scheduled_at", new Date(Date.now() - SAFETY.sameUrlBoardGapDays * 86400_000).toISOString())
       .lte("scheduled_at", windowEnd.toISOString());
 
