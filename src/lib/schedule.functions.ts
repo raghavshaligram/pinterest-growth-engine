@@ -217,6 +217,7 @@ export const runFullPipeline = createServerFn({ method: "POST" })
       .from("pages")
       .select("id")
       .eq("user_id", context.userId)
+      .eq("excluded", false)
       .is("last_analyzed_at", null)
       .limit(data.maxAnalyze);
     for (const p of toAnalyze ?? []) {
@@ -234,6 +235,7 @@ export const runFullPipeline = createServerFn({ method: "POST" })
       .from("pages")
       .select("id, pin_briefs(id)")
       .eq("user_id", context.userId)
+      .eq("excluded", false)
       .not("last_analyzed_at", "is", null)
       .limit(data.maxBriefs * 3);
     const needBriefs = (analyzedPages ?? [])

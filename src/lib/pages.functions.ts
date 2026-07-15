@@ -8,11 +8,41 @@ export const listPages = createServerFn({ method: "GET" })
     // Drop the heavy `analysis` JSON from the list view — only needed on detail page.
     const { data, error } = await context.supabase
       .from("pages")
-      .select("id, url, title, status, last_crawled_at, last_analyzed_at")
+      .select("id, url, title, status, last_crawled_at, last_analyzed_at, excluded")
       .order("last_crawled_at", { ascending: false })
       .limit(200);
     if (error) throw error;
     return data ?? [];
+  });
+
+export const setPageExcluded = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { pageId: string; excluded: boolean }) =>
+    z.object({ pageId: z.string().uuid(), excluded: z.boolean() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("pages").update({ excluded: data.excluded }).eq("id", data.pageId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+const EXCLUDE_PATTERNS = [
+  /\/(about|about-us|contact|contact-us|methodology|privacy|privacy-policy|terms|terms-of-service|tos|legal|disclaimer|cookies?|cookie-policy|refund|shipping|returns|faq|support|help|login|signin|signup|register|account|cart|checkout|thank-?you|search|sitemap|author|authors|team|careers|jobs|press|media-kit|affiliate|advertise|dmca|accessibility|imprint|impressum)(\/|$|\?)/i,
+  /\/(tag|tags|category|categories|archive|archives|page)\/[0-9]+/i,
+];
+
+export const autoExcludePages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: pages, error } = await context.supabase
+      .from("pages").select("id, url").eq("excluded", false);
+    if (error) throw error;
+    const toExclude = (pages ?? []).filter((p) => EXCLUDE_PATTERNS.some((rx) => rx.test(p.url)));
+    if (toExclude.length) {
+      await context.supabase.from("pages").update({ excluded: true }).in("id", toExclude.map((p) => p.id));
+    }
+    return { excluded: toExclude.length };
   });
 
 export const getPage = createServerFn({ method: "GET" })

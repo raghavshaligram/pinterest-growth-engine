@@ -183,6 +183,7 @@ export type Database = {
           analysis: Json | null
           content_hash: string | null
           created_at: string
+          excluded: boolean
           h1: string | null
           headings: Json | null
           id: string
@@ -202,6 +203,7 @@ export type Database = {
           analysis?: Json | null
           content_hash?: string | null
           created_at?: string
+          excluded?: boolean
           h1?: string | null
           headings?: Json | null
           id?: string
@@ -221,6 +223,7 @@ export type Database = {
           analysis?: Json | null
           content_hash?: string | null
           created_at?: string
+          excluded?: boolean
           h1?: string | null
           headings?: Json | null
           id?: string
