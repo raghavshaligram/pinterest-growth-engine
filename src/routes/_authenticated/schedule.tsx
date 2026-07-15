@@ -5,6 +5,8 @@ import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullP
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck } from "lucide-react";
@@ -29,9 +31,9 @@ function SchedulePage() {
 
   const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
+  const [perDay, setPerDay] = useState(5);
 
-  // Daily posting cadence — one draft per day, spread across 14 days for review.
-  const autoMut = useMutation({ mutationFn: () => auto({ data: { days: 14, perDay: 5, hoursStart: 9, hoursEnd: 21 } }),
+  const autoMut = useMutation({ mutationFn: () => auto({ data: { days: 14, perDay, hoursStart: 9, hoursEnd: 21 } }),
     onSuccess: (r) => { toast.success(r.reason ?? `Drafted ${r.scheduled} pins — review, then queue`); qc.invalidateQueries({ queryKey: ["scheduled"] }); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const pubMut = useMutation({ mutationFn: () => pub(),
@@ -61,9 +63,13 @@ function SchedulePage() {
       <header className="flex items-end justify-between">
         <div>
           <h1 className="font-display text-4xl">Schedule</h1>
-          <p className="text-sm text-muted-foreground">Auto-fill drafts one per day. Review each pin, then queue it — the publisher only picks up queued pins.</p>
+          <p className="text-sm text-muted-foreground">Auto-fill drafts across the next 14 days. Review each pin, then queue it — the publisher only picks up queued pins.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="per-day" className="text-xs text-muted-foreground">Per day</Label>
+            <Input id="per-day" type="number" min={1} max={25} value={perDay} onChange={(e) => setPerDay(Math.max(1, Math.min(25, parseInt(e.target.value || "1", 10))))} className="h-9 w-20 text-sm" />
+          </div>
           <Button variant="outline" onClick={() => pipeMut.mutate()} disabled={pipeMut.isPending}><Zap className="mr-2 h-4 w-4" />Run pipeline</Button>
           <Button variant="outline" onClick={() => autoMut.mutate()} disabled={autoMut.isPending}><Wand2 className="mr-2 h-4 w-4" />Auto-fill 14 days</Button>
           <Button variant="outline" onClick={() => queueMut.mutate(undefined)} disabled={queueMut.isPending || draftCount === 0}>
