@@ -25,11 +25,11 @@ export const listScheduled = createServerFn({ method: "GET" })
 // Keep tight so a fresh/warming account stays under the automated-spam radar.
 const SAFETY = {
   maxPerAccountPerDay: 25,      // account-wide daily cap
-  maxPerBoardPerDay: 5,         // board-level daily cap
+  maxPerBoardPerDay: 10,        // board-level daily cap
   maxSameUrlPerAccountDay: 3,   // same destination URL, per day, all boards
   sameUrlBoardGapDays: 2,       // ≥ N days between reposts of same URL to same board
-  sameUrlAccountGapHours: 6,    // ≥ N hours between any two pins to same URL
-  minMinutesBetweenPins: 20,    // account-wide min gap between any two pins
+  sameUrlAccountGapHours: 4,    // ≥ N hours between any two pins to same URL
+  minMinutesBetweenPins: 15,    // account-wide min gap between any two pins
 } as const;
 
 export const autoSchedule = createServerFn({ method: "POST" })
