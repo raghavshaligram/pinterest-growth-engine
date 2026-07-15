@@ -151,7 +151,12 @@ function SchedulePage() {
             </div>
           </div>
         ))}
-        {!data?.length && <p className="text-sm text-muted-foreground">Nothing scheduled yet — auto-fill to spread ready pins across the next two weeks.</p>}
+        {(isLoading || isFetching) && !data?.length && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" />Loading schedule…
+          </div>
+        )}
+        {!isLoading && !isFetching && !data?.length && <p className="text-sm text-muted-foreground">Nothing scheduled yet — auto-fill to spread ready pins across the next two weeks.</p>}
       </div>
 
       <PinDetail
