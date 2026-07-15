@@ -218,7 +218,12 @@ function PinDetail({ row, onOpenChange, onDelete, onQueue, deleting, queuing }: 
               <div className="mt-6 flex justify-end gap-2 border-t pt-4">
                 {row.status !== "published" && row.status !== "publishing" && (
                   <Button variant="destructive" onClick={() => onDelete(row.id)} disabled={deleting}>
-                    <Trash2 className="mr-2 h-4 w-4" />Delete scheduled pin
+                    <Trash2 className="mr-2 h-4 w-4" />Delete
+                  </Button>
+                )}
+                {row.status === "draft" && (
+                  <Button onClick={() => onQueue(row.id)} disabled={queuing}>
+                    <Check className="mr-2 h-4 w-4" />Queue for publishing
                   </Button>
                 )}
               </div>
