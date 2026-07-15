@@ -31,7 +31,7 @@ function SchedulePage() {
   const wipe = useServerFn(deleteAllScheduled);
   const replace = useServerFn(replaceScheduledPin);
 
-  const { data } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
+  const { data, isLoading, isFetching } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
   // Persist the per-day cadence across visits. This subtree is ssr:false so
   // reading localStorage in the lazy initializer is safe and avoids the race
