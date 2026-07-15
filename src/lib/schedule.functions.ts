@@ -382,9 +382,9 @@ export const deleteAllScheduled = createServerFn({ method: "POST" })
     z.object({ includePublished: z.boolean().optional() }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const statuses = data.includePublished
+    const statuses = (data.includePublished
       ? ["draft", "queued", "publishing", "failed", "canceled", "exported", "published"]
-      : ["draft", "queued", "failed", "canceled", "exported"];
+      : ["draft", "queued", "failed", "canceled", "exported"]) as ("draft" | "queued" | "publishing" | "failed" | "canceled" | "exported" | "published")[];
     const { data: rows } = await context.supabase
       .from("scheduled_pins").select("id, brief_id, status")
       .in("status", statuses);
