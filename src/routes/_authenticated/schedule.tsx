@@ -30,6 +30,7 @@ function SchedulePage() {
   const queue = useServerFn(queuePins);
   const wipe = useServerFn(deleteAllScheduled);
   const replace = useServerFn(replaceScheduledPin);
+  const publishNowFn = useServerFn(publishNow);
 
   const { data, isLoading, isFetching } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
