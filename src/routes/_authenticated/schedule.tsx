@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins, deleteAllScheduled, replaceScheduledPin, publishNow } from "@/lib/schedule.functions";
+import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins, deleteAllScheduled, replaceScheduledPin, publishNow, markPosted } from "@/lib/schedule.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck, RefreshCw } from "lucide-react";
+import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck, RefreshCw, PinIcon, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
@@ -31,6 +31,7 @@ function SchedulePage() {
   const wipe = useServerFn(deleteAllScheduled);
   const replace = useServerFn(replaceScheduledPin);
   const publishNowFn = useServerFn(publishNow);
+  const markPostedFn = useServerFn(markPosted);
 
   const { data, isLoading, isFetching } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
@@ -69,6 +70,9 @@ function SchedulePage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const publishNowMut = useMutation({ mutationFn: (id: string) => publishNowFn({ data: { id } }),
     onSuccess: async (r) => { toast.success(r.processed ? `Published (${r.ok ?? r.exported ?? 0})` : "Nothing published — check integration"); await qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
+  const markPostedMut = useMutation({ mutationFn: (v: { id: string; pinterestPinId?: string; unmark?: boolean }) => markPostedFn({ data: v }),
+    onSuccess: async (r) => { toast.success(r.unmarked ? "Mark cleared" : "Marked as posted"); await qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
 
   const groups = new Map<string, ScheduledRow[]>();
