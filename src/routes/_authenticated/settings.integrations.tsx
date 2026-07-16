@@ -23,6 +23,23 @@ function IntegrationsPage() {
   const list = useServerFn(listIntegrations);
   const { data } = useQuery({ queryKey: ["integrations"], queryFn: () => list() });
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const s = p.get("pinterest");
+    if (s === "connected") {
+      toast.success("Pinterest connected");
+      qc.invalidateQueries({ queryKey: ["integrations"] });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (s === "error") {
+      toast.error(`Pinterest connect failed: ${p.get("reason") ?? "unknown"}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [qc]);
+
+  const redirectUri = typeof window !== "undefined"
+    ? `${window.location.origin}/api/public/pinterest/callback`
+    : "";
+
   return (
     <div className="space-y-8">
       <header>
