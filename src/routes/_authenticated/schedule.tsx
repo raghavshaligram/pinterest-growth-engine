@@ -185,7 +185,7 @@ function StatusBadge({ status }: { status: ScheduledRow["status"] }) {
   return <Badge variant={v}>{label}</Badge>;
 }
 
-function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, deleting, queuing, replacing }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; onQueue: (id: string) => void; onReplace: (id: string) => void; deleting: boolean; queuing: boolean; replacing: boolean }) {
+function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, onPublishNow, deleting, queuing, replacing, publishing }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; onQueue: (id: string) => void; onReplace: (id: string) => void; onPublishNow: (id: string) => void; deleting: boolean; queuing: boolean; replacing: boolean; publishing: boolean }) {
   const brief = row?.pin_briefs;
   const page = brief?.pages;
   return (
