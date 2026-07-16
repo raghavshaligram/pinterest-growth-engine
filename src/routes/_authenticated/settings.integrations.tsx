@@ -78,18 +78,45 @@ function IntegrationsPage() {
         <IntegrationCard
           provider="pinterest"
           title="Pinterest"
-          description="Fill this in once your Pinterest API app is approved. Without it, pins are queued and exported as a ZIP."
+          description="Save App ID + Secret, then click Connect Pinterest to authorize your account (scopes: boards:read, pins:read, pins:write). Access + refresh tokens are stored automatically."
           fields={[
-            { name: "access_token", label: "Access token", placeholder: "pina_…", type: "password" },
-            { name: "refresh_token", label: "Refresh token", placeholder: "optional", type: "password" },
             { name: "app_id", label: "App ID", type: "text" },
             { name: "app_secret", label: "App secret", type: "password" },
           ]}
           status={data?.find((i) => i.provider === "pinterest")}
           onChanged={() => qc.invalidateQueries({ queryKey: ["integrations"] })}
+          extra={
+            <div className="space-y-2 pt-3 border-t">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <Label className="text-xs">Redirect URI (paste into your Pinterest app)</Label>
+                  <code className="mt-1 block truncate rounded bg-muted px-2 py-1 text-xs">{redirectUri}</code>
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(redirectUri); toast.success("Copied"); }}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <PinterestConnectButton />
+            </div>
+          }
         />
       </div>
     </div>
+  );
+}
+
+function PinterestConnectButton() {
+  const start = useServerFn(startPinterestOAuth);
+  const connect = useMutation({
+    mutationFn: () => start(),
+    onSuccess: (r) => { window.location.href = r.authorizeUrl; },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+  return (
+    <Button type="button" size="sm" onClick={() => connect.mutate()} disabled={connect.isPending}>
+      <LinkIcon className="mr-1 h-4 w-4" />
+      {connect.isPending ? "Redirecting…" : "Connect Pinterest"}
+    </Button>
   );
 }
 
