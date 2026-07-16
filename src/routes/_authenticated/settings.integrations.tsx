@@ -127,6 +127,7 @@ function IntegrationCard(props: {
   fields: { name: string; label: string; placeholder?: string; type: "text" | "password" }[];
   status?: { status: string; last_error?: string | null; last_used_at?: string | null };
   onChanged: () => void;
+  extra?: React.ReactNode;
 }) {
   const [vals, setVals] = useState<Record<string, string>>({});
   const save = useServerFn(saveIntegration);
