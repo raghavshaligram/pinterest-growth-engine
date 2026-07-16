@@ -1,100 +1,72 @@
+# Blotato-inspired design refresh (full app, loose interpretation)
 
-## Scope — Pinterest automation, BYOK from day one
+Keep PinForge's warm Pinterest-red identity, but borrow Blotato's energy: deeper near-black background, a **coral→magenta gradient** as the signature accent, glowing gradient CTAs, bold sans-serif display type, and subtle radial halos. Not a copy — no yellow announcement bar, no hot-pink neon, no mockup pane.
 
-Single-user app. Backend on Lovable Cloud. **All third-party credentials are managed by you in-app via `/settings/integrations`** — no secrets pasted through the Lovable add-secret flow, no `.env` prompts. You can rotate, disconnect, and switch providers without a code change.
+## Design tokens (src/styles.css)
 
-## BYOK model (the change)
+- **Background**: darker, cooler near-black. `--background: oklch(0.12 0.015 15)`; `--card: oklch(0.16 0.017 15)`; `--sidebar: oklch(0.10 0.012 15)`.
+- **Primary**: keep warm coral-red `oklch(0.66 0.20 25)` as solid token, but introduce a gradient pair:
+  - `--primary-glow: oklch(0.66 0.24 355)` (magenta)
+  - `--gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--primary-glow) 100%)`
+  - `--gradient-primary-soft: linear-gradient(135deg, oklch(0.66 0.20 25 / 0.15), oklch(0.66 0.24 355 / 0.15))`
+  - `--shadow-glow: 0 0 40px -8px oklch(0.66 0.22 355 / 0.45), 0 0 80px -20px oklch(0.66 0.20 25 / 0.35)`
+- **Border**: tighter, cooler `oklch(0.22 0.012 15)`.
+- **Radius**: bump to `1rem` for a softer, more modern feel.
 
-- Credentials stored in a dedicated `integrations` table, one row per provider, per user.
-- Values encrypted at rest with AES-256-GCM using `INTEGRATIONS_ENC_KEY` (auto-generated on first boot, stored as a Lovable Cloud secret — the only secret in the whole app).
-- Only the service-role server client reads/writes this table; browser never sees ciphertext or plaintext.
-- Settings UI shows: provider, status (connected / needs setup / failing), last-used, "Test connection" button, "Rotate" and "Disconnect".
-- Every server function that hits an external provider calls `getIntegration(userId, provider)` — no `process.env.OPENAI_API_KEY` reads anywhere in app code.
+## Typography
 
-Providers managed this way:
+- Swap display font from *Instrument Serif* to **Space Grotesk** (bold, geometric, matches Blotato energy without cloning Inter). Body stays Inter.
+- Load via `<link>` in `src/routes/__root.tsx` (never `@import` in CSS per Tailwind v4 rules).
+- Update `--font-display` in `@theme` and `.font-display` weight to 600.
+- Tighter tracking on headings (`-0.03em`) for the bold display look.
 
-| Provider | Fields | Purpose |
-|---|---|---|
-| OpenAI | `api_key` | Page analysis, pin strategy, copy, pattern clustering |
-| Replicate | `api_token` | Nano Banana 2 image generation (`google/nano-banana-2`) |
-| Apify | `api_token`, `actor_id` (default `fatihtahta/pinterest-scraper-search`) | Pinterest SERP + rank tracking (and publishing fallback later) |
-| Pinterest | `access_token`, `refresh_token`, `app_id`, `app_secret` | Publishing + analytics (populate once approval lands) |
-| Website (self) | `base_url`, `sitemap_url` | Source of truth for crawler |
+## Component-level changes
 
-Publisher adapter reads these at run time and picks the mode automatically:
-1. Pinterest credentials present → API v5
-2. Else Apify publisher configured → Apify actor
-3. Else → CSV/ZIP export you download
+- **Button (`primary` variant)**: gradient background + subtle glow shadow on hover. Add a new `variant="gradient"` in `src/components/ui/button.tsx` using `--gradient-primary` and `--shadow-glow`.
+- **AppShell sidebar**:
+  - Logo icon gets a small gradient chip behind the Sparkles.
+  - Active nav item uses a left gradient bar + soft gradient tint background instead of flat `bg-sidebar-accent`.
+  - Sidebar keeps solid dark, but border becomes a hairline gradient on the right edge.
+- **Cards**: add a `.card-glow` utility (`@utility`) for hero/dashboard summary cards — subtle radial magenta halo top-right, thin border.
+- **Auth page (`/auth`)**: full-bleed background with two large soft radial halos (coral top-left, magenta bottom-right), centered card floats on top with backdrop blur, gradient submit button. Small "TRUSTED BY" style eyebrow chip above the heading.
+- **Dashboard**: promote the top stat row to gradient-tinted cards; primary CTA (e.g. "Generate pins") becomes the gradient button.
 
-## What ships in this first turn (end-to-end)
+## Utilities added to styles.css
 
-1. **Auth + shell** — email/password sign-in, sidebar nav.
-2. **Settings → Integrations** — the BYOK panel described above. First-run wizard nudges you here.
-3. **Sites** — add site + sitemap URL.
-4. **Crawler** — sitemap parser, page fetcher, extracts title/H1/meta/headings/images/JSON-LD; change detection.
-5. **Page analyzer** (OpenAI via your key) — topic, primary + secondary keywords, intent, category, audience, seasonality.
-6. **Pin strategy generator** — N pin briefs per page (mixed styles: how-to, checklist, comparison, calculator, mistakes, before/after, listicle, FAQ).
-7. **Image generation** — Replicate `google/nano-banana-2` at 1000×1500; results persisted to Supabase Storage (Replicate URLs expire in ~1h); prompt-hash dedup.
-8. **Boards** — CRUD (name + Pinterest board ID).
-9. **Scheduler** — month/week calendar, drag-and-drop, "Auto-fill next 30 days" respecting same-URL cooldown, no image reuse, per-day cap, posting hours, timezone.
-10. **Publisher** — cron every 15 min; adapter picks API / Apify / export.
-11. **Apify SERP + rank tracker** — daily snapshot per tracked keyword via `fatihtahta/pinterest-scraper-search`; OpenAI clusters winning patterns.
-12. **Dashboard** — pins published today, scheduled, pages waiting, image queue, publish queue, failures, top keywords + trend, recent activity, integration health.
-
-## Deferred (later turns, roadmap intact)
-
-Learning loop feeding winners back into generator prompts, A/B promotion, evergreen recycling (>30 days data), deep analytics dashboards, competitor monitoring, multi-tenant, Canva, brand kits, weekly AI reports.
-
-## Data model (Postgres, RLS by `auth.uid()`)
-
-```text
-integrations       (user_id, provider, config_ciphertext, status, last_used_at, last_error, updated_at)
-sites              (id, user_id, url, sitemap_url, timezone, settings jsonb)
-pages              (site_id, url, title, h1, meta, content_hash, headings jsonb,
-                    images jsonb, jsonld jsonb, analysis jsonb, status,
-                    last_crawled_at, last_analyzed_at)
-keywords           (page_id, keyword, kind, tracked bool)
-serp_snapshots     (keyword, captured_at, top_pins jsonb, patterns jsonb)
-rank_history       (keyword, captured_at, position, our_pin_id)
-boards             (id, user_id, name, pinterest_board_id, keywords text[], category)
-pin_briefs         (id, page_id, style, title, description, hashtags text[],
-                    alt_text, cta, image_prompt, board_id, status)
-pin_images         (id, brief_id, storage_path, prompt_hash, replicate_prediction_id, meta jsonb)
-scheduled_pins     (id, brief_id, image_id, board_id, scheduled_at,
-                    status queued|publishing|published|failed|exported,
-                    pinterest_pin_id, attempts, last_error, published_at)
-publish_logs       (id, scheduled_pin_id, at, level, message, payload jsonb)
-jobs               (id, kind, payload jsonb, status, run_at, attempts, last_error)
+```css
+@utility bg-gradient-primary { background-image: var(--gradient-primary); }
+@utility text-gradient-primary {
+  background-image: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility shadow-glow { box-shadow: var(--shadow-glow); }
+@utility card-glow {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(600px circle at 100% 0%, oklch(0.66 0.22 355 / 0.12), transparent 40%);
+    pointer-events: none; border-radius: inherit;
+  }
+}
 ```
 
-## Cron (pg_cron → signed server routes, `CRON_SECRET` auto-generated)
+## Files touched
 
-- `0 4 * * *`   crawl sites
-- `15 4 * * *`  analyze new/changed pages
-- `30 4 * * *`  generate pin briefs
-- `0 3 * * *`   Apify SERP + rank sweep
-- `*/10 * * * *` image-gen worker (Replicate)
-- `*/15 * * * *` publisher
-- `0 5 * * *`   auto-schedule fill
+- `src/styles.css` — tokens, gradient vars, glow shadow, utilities, heading tracking, radius bump.
+- `src/routes/__root.tsx` — add Space Grotesk `<link>` in head.
+- `src/components/ui/button.tsx` — add `gradient` variant.
+- `src/components/AppShell.tsx` — logo chip, gradient active state, hairline right edge.
+- `src/routes/auth.tsx` — halo background, blurred card, gradient CTA, eyebrow chip.
+- `src/routes/_authenticated/dashboard.tsx` — apply `card-glow` + gradient CTA on primary actions.
 
-## Files
+## What I'm intentionally NOT doing
 
-- Routes: `/`, `/auth`, `/_authenticated/dashboard`, `/sites`, `/pages`, `/pages/$id`, `/pins`, `/pins/$id`, `/schedule`, `/boards`, `/keywords`, `/settings`, `/settings/integrations`, `/logs`
-- `src/lib/integrations/*` — table, crypto (AES-256-GCM), `getIntegration`, `saveIntegration`, `testIntegration`
-- `src/lib/openai/*`, `src/lib/replicate/*`, `src/lib/apify/*`, `src/lib/pinterest/*` — each reads credentials via `getIntegration(userId, provider)`
-- `src/lib/pinterest/PinterestClient.ts` (interface) + `apiClient.ts` + `apifyPublisher.ts` + `exportClient.ts`
-- Cron in `src/routes/api/public/cron/*`
-- Design system in `src/styles.css` — dark editorial, warm Pinterest red + deep charcoal (no AI-purple defaults)
+- No yellow announcement bar.
+- No hot-pink neon — the accent stays coral-leaning to preserve Pinterest brand link.
+- No app-preview mockup pane on the auth page.
+- No changes to business logic, server functions, or DB.
 
-## Auto-provisioned secrets (only these two)
-
-- `INTEGRATIONS_ENC_KEY` — I generate on first boot (32-byte, AES-256-GCM)
-- `CRON_SECRET` — I generate on first boot
-
-Every other credential lives in the DB, entered by you in `/settings/integrations`.
-
-## End-of-turn definition of done
-
-Sign in → open Settings → paste OpenAI + Replicate + Apify keys (test buttons go green) → add harvestmath.com + sitemap → "Crawl now" → open a page → "Generate 10 pins" → images render via Nano Banana 2 → drag onto calendar → publisher exports ZIP (or publishes if you've added Pinterest credentials) → overnight cron pulls SERP + rank data.
-
-Approve and I'll start building.
+Approve and I'll implement in one pass.
