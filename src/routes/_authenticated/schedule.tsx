@@ -272,8 +272,13 @@ function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, onPublishN
                   </Button>
                 )}
                 {row.status === "draft" && (
-                  <Button size="sm" onClick={() => onQueue(row.id)} disabled={queuing}>
+                  <Button size="sm" variant="secondary" onClick={() => onQueue(row.id)} disabled={queuing}>
                     <Check className="mr-2 h-4 w-4" />Queue for publishing
+                  </Button>
+                )}
+                {row.status !== "published" && row.status !== "publishing" && (
+                  <Button size="sm" onClick={() => onPublishNow(row.id)} disabled={publishing} title="Publish this pin immediately, ignoring the scheduled time">
+                    <Send className={`mr-2 h-4 w-4 ${publishing ? "animate-pulse" : ""}`} />Publish now
                   </Button>
                 )}
               </div>
