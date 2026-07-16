@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins, deleteAllScheduled, replaceScheduledPin, publishNow } from "@/lib/schedule.functions";
+import { listScheduled, autoSchedule, runPublisher, rescheduleOrCancel, runFullPipeline, queuePins, deleteAllScheduled, replaceScheduledPin, publishNow, markPosted } from "@/lib/schedule.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck, RefreshCw } from "lucide-react";
+import { CalendarClock, Send, Wand2, Trash2, Zap, ExternalLink, Link as LinkIcon, Hash, ImageIcon, Check, CheckCheck, RefreshCw, PinIcon, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/schedule")({
@@ -31,6 +31,7 @@ function SchedulePage() {
   const wipe = useServerFn(deleteAllScheduled);
   const replace = useServerFn(replaceScheduledPin);
   const publishNowFn = useServerFn(publishNow);
+  const markPostedFn = useServerFn(markPosted);
 
   const { data, isLoading, isFetching } = useQuery({ queryKey: ["scheduled"], queryFn: () => list() });
   const [open, setOpen] = useState<ScheduledRow | null>(null);
@@ -69,6 +70,9 @@ function SchedulePage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
   const publishNowMut = useMutation({ mutationFn: (id: string) => publishNowFn({ data: { id } }),
     onSuccess: async (r) => { toast.success(r.processed ? `Published (${r.ok ?? r.exported ?? 0})` : "Nothing published — check integration"); await qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
+  const markPostedMut = useMutation({ mutationFn: (v: { id: string; pinterestPinId?: string; unmark?: boolean }) => markPostedFn({ data: v }),
+    onSuccess: async (r) => { toast.success(r.unmarked ? "Mark cleared" : "Marked as posted"); await qc.invalidateQueries({ queryKey: ["scheduled"] }); setOpen(null); },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)) });
 
   const groups = new Map<string, ScheduledRow[]>();
@@ -170,10 +174,13 @@ function SchedulePage() {
         onQueue={(id) => queueMut.mutate([id])}
         onReplace={(id) => replaceMut.mutate(id)}
         onPublishNow={(id) => publishNowMut.mutate(id)}
+        onMarkPosted={(id, pinterestPinId) => markPostedMut.mutate({ id, pinterestPinId })}
+        onUnmarkPosted={(id) => markPostedMut.mutate({ id, unmark: true })}
         deleting={delMut.isPending}
         queuing={queueMut.isPending}
         replacing={replaceMut.isPending}
         publishing={publishNowMut.isPending}
+        marking={markPostedMut.isPending}
       />
     </div>
   );
@@ -185,9 +192,11 @@ function StatusBadge({ status }: { status: ScheduledRow["status"] }) {
   return <Badge variant={v}>{label}</Badge>;
 }
 
-function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, onPublishNow, deleting, queuing, replacing, publishing }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; onQueue: (id: string) => void; onReplace: (id: string) => void; onPublishNow: (id: string) => void; deleting: boolean; queuing: boolean; replacing: boolean; publishing: boolean }) {
+function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, onPublishNow, onMarkPosted, onUnmarkPosted, deleting, queuing, replacing, publishing, marking }: { row: ScheduledRow | null; onOpenChange: (v: boolean) => void; onDelete: (id: string) => void; onQueue: (id: string) => void; onReplace: (id: string) => void; onPublishNow: (id: string) => void; onMarkPosted: (id: string, pinterestPinId?: string) => void; onUnmarkPosted: (id: string) => void; deleting: boolean; queuing: boolean; replacing: boolean; publishing: boolean; marking: boolean }) {
   const brief = row?.pin_briefs;
   const page = brief?.pages;
+  const [manualPinId, setManualPinId] = useState("");
+  useEffect(() => { setManualPinId(""); }, [row?.id]);
   return (
     <Dialog open={!!row} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl overflow-hidden p-0">
@@ -259,6 +268,34 @@ function PinDetail({ row, onOpenChange, onDelete, onQueue, onReplace, onPublishN
                   </Field>
                 )}
               </dl>
+
+              {row.status !== "published" && row.status !== "publishing" && (
+                <div className="mt-6 rounded-lg border border-dashed p-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <PinIcon className="h-3.5 w-3.5" />Posted manually?
+                  </div>
+                  <p className="mb-2 text-xs text-muted-foreground">If you pinned this to Pinterest yourself, mark it as posted so it stops appearing in the queue.</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={manualPinId}
+                      onChange={(e) => setManualPinId(e.target.value)}
+                      placeholder="Pinterest pin ID (optional)"
+                      className="h-8 flex-1 min-w-[180px] text-sm"
+                    />
+                    <Button size="sm" variant="secondary" onClick={() => onMarkPosted(row.id, manualPinId.trim() || undefined)} disabled={marking}>
+                      <Check className="mr-2 h-4 w-4" />Mark as posted
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {row.status === "published" && (
+                <div className="mt-6 rounded-lg border border-dashed p-3">
+                  <Button size="sm" variant="outline" onClick={() => onUnmarkPosted(row.id)} disabled={marking} title="Move back to the queue">
+                    <Undo2 className="mr-2 h-4 w-4" />Unmark as posted
+                  </Button>
+                </div>
+              )}
 
               <div className="mt-6 flex flex-wrap justify-end gap-2 border-t pt-4">
                 {row.status !== "published" && row.status !== "publishing" && (
