@@ -33,6 +33,7 @@ export async function processDuePinsForUser(userId: string, limit = 25, onlyId?:
       const pageUrl = (brief as { pages?: { url?: string } }).pages?.url ?? "";
       const input = {
         userId,
+        scheduledPinId: sp.id,
         boardId: board.pinterest_board_id ?? board.id,
         title: brief.title,
         description: brief.description,
@@ -52,13 +53,16 @@ export async function processDuePinsForUser(userId: string, limit = 25, onlyId?:
         exported++;
       } else {
         const result = await client.publish(input);
+        const pinId = result.mode === "api" ? result.pinterestPinId
+          : result.mode === "webhook" ? (result.pinterestPinId ?? null)
+          : null;
         await supabaseAdmin.from("scheduled_pins").update({
           status: "published",
-          pinterest_pin_id: result.mode === "api" ? result.pinterestPinId : null,
+          pinterest_pin_id: pinId,
           published_at: new Date().toISOString(),
         }).eq("id", sp.id);
         await supabaseAdmin.from("publish_logs").insert({
-          user_id: userId, scheduled_pin_id: sp.id, level: "info", message: `Published via ${result.mode}`,
+          user_id: userId, scheduled_pin_id: sp.id, level: "info", message: `Published via ${result.mode}${pinId ? ` (${pinId})` : ""}`,
         });
         ok++;
       }
