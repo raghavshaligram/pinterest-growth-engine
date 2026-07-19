@@ -170,23 +170,18 @@ function PinTile({ b, url, onOpen }: { b: Brief; url: string | null; onOpen: () 
 }
 
 function PinDetail({
-  row, onOpenChange, onRerender, onDelete, rerendering, deleting,
+  row, signedUrl, onOpenChange, onRerender, onDelete, rerendering, deleting,
 }: {
   row: Brief | null;
+  signedUrl: string | null;
   onOpenChange: (v: boolean) => void;
   onRerender: (id: string) => void;
   onDelete: (id: string) => void;
   rerendering: boolean;
   deleting: boolean;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const path = row?.pin_images?.[0]?.storage_path;
-  useEffect(() => {
-    let ok = true;
-    setUrl(null);
-    if (path) supabase.storage.from("pins").createSignedUrl(path, 3600).then((r) => { if (ok) setUrl(r.data?.signedUrl ?? null); });
-    return () => { ok = false; };
-  }, [path]);
+  const url = signedUrl;
+
 
   const page = row ? (row as { pages?: { url?: string; title?: string } }).pages : null;
 
