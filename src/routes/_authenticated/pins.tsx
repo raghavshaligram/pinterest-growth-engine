@@ -72,6 +72,25 @@ function PinsPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  // Batch-sign all image URLs in a single request (avoids N round-trips).
+  const paths = (data ?? []).map((b) => b.pin_images?.[0]?.storage_path).filter(Boolean) as string[];
+  const pathsKey = paths.join("|");
+  const { data: urlMap } = useQuery({
+    queryKey: ["pin-signed-urls", pathsKey],
+    enabled: paths.length > 0,
+    staleTime: 55 * 60 * 1000,
+    queryFn: async () => {
+      const map: Record<string, string> = {};
+      const chunkSize = 100;
+      for (let i = 0; i < paths.length; i += chunkSize) {
+        const chunk = paths.slice(i, i + chunkSize);
+        const { data: signed } = await supabase.storage.from("pins").createSignedUrls(chunk, 3600);
+        signed?.forEach((s) => { if (s.path && s.signedUrl) map[s.path] = s.signedUrl; });
+      }
+      return map;
+    },
+  });
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -91,12 +110,16 @@ function PinsPage() {
         </div>
       </header>
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {data?.map((b) => <PinTile key={b.id} b={b} onOpen={() => setOpen(b)} />)}
+        {data?.map((b) => {
+          const p = b.pin_images?.[0]?.storage_path;
+          return <PinTile key={b.id} b={b} url={p ? urlMap?.[p] ?? null : null} onOpen={() => setOpen(b)} />;
+        })}
         {!data?.length && <p className="text-sm text-muted-foreground">No pins yet.</p>}
       </div>
 
       <PinDetail
         row={open}
+        signedUrl={open?.pin_images?.[0]?.storage_path ? urlMap?.[open.pin_images[0].storage_path] ?? null : null}
         onOpenChange={(v) => !v && setOpen(null)}
         onRerender={(id) => rerenderMut.mutate(id)}
         onDelete={(id) => deleteMut.mutate(id)}
