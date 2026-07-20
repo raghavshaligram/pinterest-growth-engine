@@ -3,11 +3,16 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // How many "published this week" pin thumbnails we pull signed URLs for.
-// Only a handful render (the rest collapse into a "+N more" tile), but we
-// fetch a small buffer past that in case some rows are missing a
+// Only a handful render (the rest collapse into a compact "+N" chip), but
+// we fetch a small buffer past that in case some rows are missing a
 // resolvable image.
 const PUBLISHED_FETCH_LIMIT = 12;
 const PUBLISHED_SHOW_LIMIT = 5;
+// Activity feed: fetch enough rows to have a real "N more manually
+// posted" tail to collapse (see dashboard.tsx), not just whatever fits
+// on screen.
+const RECENT_LOGS_FETCH_LIMIT = 40;
+const PINS_BY_BOARD_FETCH_LIMIT = 500;
 const FALLBACK_SITE_COLOR = "#8A867C";
 
 export const dashboardStats = createServerFn({ method: "GET" })
@@ -84,6 +89,20 @@ export const dashboardStats = createServerFn({ method: "GET" })
       "brief_id",
       briefIds,
     );
+    // "Pins by board" card: every pin published this week, just enough
+    // columns to tally counts per board client-side (PostgREST has no
+    // simple JS-client group-by, and the volumes here are small enough
+    // that fetching rows and counting in JS is fine).
+    const pinsByBoardRowsP = scopeBy(
+      s
+        .from("scheduled_pins")
+        .select("board_id, boards(name)")
+        .eq("status", "published")
+        .gte("published_at", weekAgo)
+        .limit(PINS_BY_BOARD_FETCH_LIMIT),
+      "brief_id",
+      briefIds,
+    );
 
     const [
       pagesTotalRes,
@@ -97,6 +116,7 @@ export const dashboardStats = createServerFn({ method: "GET" })
       lastCrawledRes,
       sitesColorRes,
       publishedRowsRes,
+      pinsByBoardRowsRes,
     ] = await Promise.all([
       pagesTotalP,
       briefsTotalP,
@@ -109,18 +129,27 @@ export const dashboardStats = createServerFn({ method: "GET" })
       lastCrawledP,
       sitesColorP,
       publishedRowsP,
+      pinsByBoardRowsP,
     ]);
 
     // Recent activity: resolve which scheduled_pins ids are in scope (via
     // the same brief_id chain) before filtering publish_logs -- same
-    // reasoning as above, no deep embedded dot-path filters.
-    let recentLogsQuery = s.from("publish_logs").select("at, level, message").order("at", { ascending: false }).limit(15);
+    // reasoning as above, no deep embedded dot-path filters. Pull the
+    // board + pin title + thumbnail through the same scheduled_pin so the
+    // feed can show "which pin, which board" instead of a bare message.
+    let recentLogsQuery = s
+      .from("publish_logs")
+      .select(
+        "id, at, level, message, scheduled_pin_id, scheduled_pins(board_id, boards(name), pin_briefs(title, pin_images(storage_path)))",
+      )
+      .order("at", { ascending: false })
+      .limit(RECENT_LOGS_FETCH_LIMIT);
     if (scoped) {
       const { data: scheduledRows } = await s.from("scheduled_pins").select("id").in("brief_id", briefIds);
       const scheduledIds = (scheduledRows ?? []).map((r: { id: string }) => r.id);
       recentLogsQuery = recentLogsQuery.in("scheduled_pin_id", scheduledIds);
     }
-    const { data: recentLogs } = await recentLogsQuery;
+    const { data: recentLogRows } = await recentLogsQuery;
 
     const pagesTotal = pagesTotalRes.count ?? 0;
     const briefsTotal = briefsTotalRes.count ?? 0;
@@ -164,12 +193,33 @@ export const dashboardStats = createServerFn({ method: "GET" })
       pin_images?: { storage_path: string }[] | { storage_path: string } | null;
     };
     const publishedRows = (publishedRowsRes.data ?? []) as unknown as PublishedRow[];
+
+    type LogRow = {
+      id: string;
+      at: string;
+      level: string;
+      message: string;
+      scheduled_pin_id: string | null;
+      scheduled_pins?: {
+        board_id?: string | null;
+        boards?: { name?: string | null } | null;
+        pin_briefs?: { title?: string | null; pin_images?: { storage_path: string }[] | null } | null;
+      } | null;
+    };
+    const logRows = (recentLogRows ?? []) as unknown as LogRow[];
+
+    // Sign every storage path referenced by either section in one batch so
+    // overlapping images (a pin that's both "published this week" and has
+    // a fresh activity-log row) don't get signed twice.
     const storagePaths = Array.from(
-      new Set(
-        publishedRows
+      new Set([
+        ...publishedRows
           .map((r) => (Array.isArray(r.pin_images) ? r.pin_images[0]?.storage_path : r.pin_images?.storage_path))
-          .filter(Boolean) as string[],
-      ),
+          .filter(Boolean),
+        ...logRows
+          .map((r) => r.scheduled_pins?.pin_briefs?.pin_images?.[0]?.storage_path)
+          .filter(Boolean),
+      ]) as Set<string>,
     );
     const signedUrlMap = new Map<string, string>();
     await Promise.all(
@@ -192,11 +242,32 @@ export const dashboardStats = createServerFn({ method: "GET" })
           siteColor: rowSiteId ? siteColorMap.get(rowSiteId) ?? FALLBACK_SITE_COLOR : FALLBACK_SITE_COLOR,
         };
       })
-      .filter(
-        (r): r is { id: string; pageTitle: string; thumbUrl: string; siteId: string | null; siteColor: string } =>
-          Boolean(r.thumbUrl),
-      )
+      .filter((r): r is { id: string; pageTitle: string; thumbUrl: string; siteId: string | null; siteColor: string } => Boolean(r.thumbUrl))
       .slice(0, PUBLISHED_SHOW_LIMIT);
+
+    const recentLogs = logRows.map((r) => {
+      const sp = r.scheduled_pins;
+      const path = sp?.pin_briefs?.pin_images?.[0]?.storage_path;
+      return {
+        id: r.id,
+        at: r.at,
+        level: r.level,
+        message: r.message,
+        pinTitle: sp?.pin_briefs?.title ?? null,
+        boardName: sp?.boards?.name ?? null,
+        thumbUrl: path ? signedUrlMap.get(path) ?? null : null,
+      };
+    });
+
+    const boardCounts = new Map<string, { name: string; count: number }>();
+    for (const row of (pinsByBoardRowsRes.data ?? []) as { board_id: string | null; boards?: { name?: string | null } | null }[]) {
+      if (!row.board_id) continue;
+      const name = row.boards?.name ?? "Untitled board";
+      const cur = boardCounts.get(row.board_id) ?? { name, count: 0 };
+      cur.count += 1;
+      boardCounts.set(row.board_id, cur);
+    }
+    const pinsByBoard = Array.from(boardCounts.values()).sort((a, b) => b.count - a.count);
 
     return {
       pipeline: {
@@ -210,7 +281,8 @@ export const dashboardStats = createServerFn({ method: "GET" })
       publishedThisWeek,
       publishedThisWeekTotal: publishedRowsRes.count ?? publishedRows.length,
       lastUpdatedAt: lastCrawledRes.data?.[0]?.last_crawled_at ?? null,
-      recentLogs: recentLogs ?? [],
+      recentLogs,
+      pinsByBoard,
       integrations: integrationsRes.data ?? [],
     };
   });
