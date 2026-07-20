@@ -14,90 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_cap_events: {
-        Row: {
-          created_at: string
-          detail: Json | null
-          event_type: string
-          from_cap: number | null
-          from_tier: string | null
-          id: string
-          to_cap: number | null
-          to_tier: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          detail?: Json | null
-          event_type: string
-          from_cap?: number | null
-          from_tier?: string | null
-          id?: string
-          to_cap?: number | null
-          to_tier?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          detail?: Json | null
-          event_type?: string
-          from_cap?: number | null
-          from_tier?: string | null
-          id?: string
-          to_cap?: number | null
-          to_tier?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      account_publishing_profiles: {
-        Row: {
-          cap_mode: string
-          created_at: string
-          current_daily_cap: number
-          id: string
-          last_cap_check_at: string | null
-          manual_cap: number | null
-          onboarded_at: string
-          pinterest_metrics: Json | null
-          reconciled_at: string | null
-          reconciled_tier: string
-          self_reported_age_bucket: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          cap_mode?: string
-          created_at?: string
-          current_daily_cap?: number
-          id?: string
-          last_cap_check_at?: string | null
-          manual_cap?: number | null
-          onboarded_at?: string
-          pinterest_metrics?: Json | null
-          reconciled_at?: string | null
-          reconciled_tier: string
-          self_reported_age_bucket: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          cap_mode?: string
-          created_at?: string
-          current_daily_cap?: number
-          id?: string
-          last_cap_check_at?: string | null
-          manual_cap?: number | null
-          onboarded_at?: string
-          pinterest_metrics?: Json | null
-          reconciled_at?: string | null
-          reconciled_tier?: string
-          self_reported_age_bucket?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       boards: {
         Row: {
           category: string | null
@@ -345,10 +261,13 @@ export type Database = {
           image_prompt: string
           intent: string
           page_id: string
+          serp_keyword: string | null
+          serp_patterns_captured_at: string | null
           status: Database["public"]["Enums"]["brief_status"]
           style: string
           title: string
           updated_at: string
+          used_serp_patterns: boolean
           user_id: string
         }
         Insert: {
@@ -362,10 +281,13 @@ export type Database = {
           image_prompt: string
           intent?: string
           page_id: string
+          serp_keyword?: string | null
+          serp_patterns_captured_at?: string | null
           status?: Database["public"]["Enums"]["brief_status"]
           style: string
           title: string
           updated_at?: string
+          used_serp_patterns?: boolean
           user_id: string
         }
         Update: {
@@ -379,10 +301,13 @@ export type Database = {
           image_prompt?: string
           intent?: string
           page_id?: string
+          serp_keyword?: string | null
+          serp_patterns_captured_at?: string | null
           status?: Database["public"]["Enums"]["brief_status"]
           style?: string
           title?: string
           updated_at?: string
+          used_serp_patterns?: boolean
           user_id?: string
         }
         Relationships: [
