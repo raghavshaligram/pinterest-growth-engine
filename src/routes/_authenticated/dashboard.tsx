@@ -26,7 +26,7 @@ const STAGES = [
 // How many "marked as manually posted" rows show inline before the rest
 // collapse under a "N more" expandable row.
 const MANUAL_INLINE_LIMIT = 2;
-const COLUMN_MAX_HEIGHT = 480;
+
 
 function formatClock(iso: string): string {
   const d = new Date(iso);
