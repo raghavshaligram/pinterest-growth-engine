@@ -153,7 +153,7 @@ export async function runWeeklyCapCheck(userId: string): Promise<{ applied: CapC
         event_type: e.event_type,
         from_cap: e.from_cap,
         to_cap: e.to_cap,
-        detail: e.detail,
+        detail: e.detail as never,
       })),
     );
     if (insErr) throw insErr;

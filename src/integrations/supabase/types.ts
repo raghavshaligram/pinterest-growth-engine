@@ -53,46 +53,40 @@ export type Database = {
       account_publishing_profiles: {
         Row: {
           cap_mode: string
-          created_at: string
           current_daily_cap: number
-          id: string
           last_cap_check_at: string | null
           manual_cap: number | null
           onboarded_at: string
           pinterest_metrics: Json | null
           reconciled_at: string | null
           reconciled_tier: string
-          self_reported_age_bucket: string
+          self_reported_age_bucket: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           cap_mode?: string
-          created_at?: string
           current_daily_cap?: number
-          id?: string
-          last_cap_check_at?: string | null
-          manual_cap?: number | null
-          onboarded_at?: string
-          pinterest_metrics?: Json | null
-          reconciled_at?: string | null
-          reconciled_tier: string
-          self_reported_age_bucket: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          cap_mode?: string
-          created_at?: string
-          current_daily_cap?: number
-          id?: string
           last_cap_check_at?: string | null
           manual_cap?: number | null
           onboarded_at?: string
           pinterest_metrics?: Json | null
           reconciled_at?: string | null
           reconciled_tier?: string
-          self_reported_age_bucket?: string
+          self_reported_age_bucket?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cap_mode?: string
+          current_daily_cap?: number
+          last_cap_check_at?: string | null
+          manual_cap?: number | null
+          onboarded_at?: string
+          pinterest_metrics?: Json | null
+          reconciled_at?: string | null
+          reconciled_tier?: string
+          self_reported_age_bucket?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -345,10 +339,13 @@ export type Database = {
           image_prompt: string
           intent: string
           page_id: string
+          serp_keyword: string | null
+          serp_patterns_captured_at: string | null
           status: Database["public"]["Enums"]["brief_status"]
           style: string
           title: string
           updated_at: string
+          used_serp_patterns: boolean
           user_id: string
         }
         Insert: {
@@ -362,10 +359,13 @@ export type Database = {
           image_prompt: string
           intent?: string
           page_id: string
+          serp_keyword?: string | null
+          serp_patterns_captured_at?: string | null
           status?: Database["public"]["Enums"]["brief_status"]
           style: string
           title: string
           updated_at?: string
+          used_serp_patterns?: boolean
           user_id: string
         }
         Update: {
@@ -379,10 +379,13 @@ export type Database = {
           image_prompt?: string
           intent?: string
           page_id?: string
+          serp_keyword?: string | null
+          serp_patterns_captured_at?: string | null
           status?: Database["public"]["Enums"]["brief_status"]
           style?: string
           title?: string
           updated_at?: string
+          used_serp_patterns?: boolean
           user_id?: string
         }
         Relationships: [
