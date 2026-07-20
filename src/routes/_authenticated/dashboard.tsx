@@ -26,7 +26,7 @@ const STAGES = [
 // How many "marked as manually posted" rows show inline before the rest
 // collapse under a "N more" expandable row.
 const MANUAL_INLINE_LIMIT = 2;
-const COLUMN_MAX_HEIGHT = 480;
+
 
 function formatClock(iso: string): string {
   const d = new Date(iso);
@@ -233,7 +233,7 @@ function DashboardPage() {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section
           className="flex min-w-0 flex-col rounded-[8px]"
-          style={{ border: "1px solid var(--border-subtle)", maxHeight: COLUMN_MAX_HEIGHT }}
+          style={{ border: "1px solid var(--border-subtle)" }}
         >
           <div className="flex items-center justify-between px-4 pt-3 pb-2">
             <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Activity</h2>
@@ -241,7 +241,7 @@ function DashboardPage() {
               View all
             </Link>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 pb-2" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+          <div className="px-4 pb-2" style={{ borderTop: "1px solid var(--border-subtle)" }}>
             {errorLogs.map((l) => (
               <ActivityRow key={l.id} log={l} variant="error" />
             ))}
@@ -273,23 +273,26 @@ function DashboardPage() {
           </div>
         </section>
 
-        <div className="flex min-w-0 flex-col gap-6 overflow-y-auto" style={{ maxHeight: COLUMN_MAX_HEIGHT }}>
-          <section>
-            <div className="mb-3 flex items-center justify-between">
+        <div className="flex min-w-0 flex-col gap-6">
+          <section
+            className="flex min-w-0 flex-col rounded-[8px]"
+            style={{ border: "1px solid var(--border-subtle)" }}
+          >
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Integrations</h2>
               <Link to="/settings/integrations" className="text-xs hover:underline" style={{ color: "var(--accent)" }}>
                 Manage
               </Link>
             </div>
-            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
-              {providers.map((p) => {
+            <div className="px-4 pb-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+              {providers.map((p, idx) => {
                 const row = data?.integrations.find((i) => i.provider === p);
                 const ok = row?.status === "ok";
                 return (
                   <div
                     key={p}
                     className="flex items-center justify-between py-2.5"
-                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    style={{ borderBottom: idx === providers.length - 1 ? undefined : "1px solid var(--border-subtle)" }}
                   >
                     <span className="text-sm capitalize" style={{ color: "var(--text-primary)" }}>{p}</span>
                     {ok ? (
@@ -309,17 +312,20 @@ function DashboardPage() {
             </div>
           </section>
 
-          <section>
-            <div className="mb-3 flex items-baseline gap-2">
+          <section
+            className="flex min-w-0 flex-col rounded-[8px]"
+            style={{ border: "1px solid var(--border-subtle)" }}
+          >
+            <div className="flex items-baseline gap-2 px-4 pt-3 pb-2">
               <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Pins by board</h2>
               <span className="text-xs" style={{ color: "var(--text-muted)" }}>this week</span>
             </div>
-            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
-              {(data?.pinsByBoard ?? []).map((b) => (
+            <div className="px-4 pb-1" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+              {(data?.pinsByBoard ?? []).map((b, idx, arr) => (
                 <div
                   key={b.name}
                   className="flex items-center justify-between py-2.5"
-                  style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                  style={{ borderBottom: idx === arr.length - 1 ? undefined : "1px solid var(--border-subtle)" }}
                 >
                   <span className="truncate text-sm" style={{ color: "var(--text-primary)" }}>{b.name}</span>
                   <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>{b.count}</span>
@@ -334,6 +340,7 @@ function DashboardPage() {
           </section>
         </div>
       </div>
+
     </div>
   );
 }
