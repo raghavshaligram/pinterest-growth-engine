@@ -10,6 +10,8 @@ import type { ReactNode } from "react";
 import { PinspiderMark } from "@/components/PinspiderMark";
 import { SiteSwitcher } from "@/components/SiteSwitcher";
 import { SiteProvider } from "@/lib/site-context";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
