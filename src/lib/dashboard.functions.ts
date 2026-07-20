@@ -6,8 +6,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Only a handful render (the rest collapse into a compact "+N" chip), but
 // we fetch a small buffer past that in case some rows are missing a
 // resolvable image.
-const PUBLISHED_FETCH_LIMIT = 12;
-const PUBLISHED_SHOW_LIMIT = 5;
+const PUBLISHED_FETCH_LIMIT = 16;
+const PUBLISHED_SHOW_LIMIT = 8;
 // Activity feed: fetch enough rows to have a real "N more manually
 // posted" tail to collapse (see dashboard.tsx), not just whatever fits
 // on screen.
@@ -80,8 +80,15 @@ export const dashboardStats = createServerFn({ method: "GET" })
     const sitesColorP = s.from("sites").select("id, accent_color");
     const publishedRowsP = scopeBy(
       s
+        // count: "exact" is independent of the .limit() below -- it still
+        // reflects the true total published-this-week count, which is what
+        // the "+N" chip needs (previously this select had no count option
+        // at all, so publishedRowsRes.count was always undefined and the
+        // chip fell back to publishedRows.length -- capped at the fetch
+        // limit -- silently undercounting once a site had more published
+        // pins this week than the fetch limit).
         .from("scheduled_pins")
-        .select("id, published_at, pin_briefs(page_id, title, pages(site_id, title, url)), pin_images(storage_path)")
+        .select("id, published_at, pin_briefs(page_id, title, pages(site_id, title, url)), pin_images(storage_path)", { count: "exact" })
         .eq("status", "published")
         .gte("published_at", weekAgo)
         .order("published_at", { ascending: false })

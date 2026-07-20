@@ -223,9 +223,16 @@ function DashboardPage() {
         )}
       </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[2fr_1fr]">
+      {/* minmax(0, Nfr) instead of a bare Nfr is required here: bare fr
+          tracks default to min-width: auto, so an oversized Activity feed
+          (long messages, many rows) blows the column out to its content's
+          intrinsic width instead of respecting the 1.3fr/1fr split -- and
+          on top of that, min-w-0 on the grid items themselves is needed
+          too, since a grid item's own default min-width: auto can still
+          force the track wider even when the track itself is constrained. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section
-          className="flex flex-col rounded-[8px]"
+          className="flex min-w-0 flex-col rounded-[8px]"
           style={{ border: "1px solid var(--border-subtle)", maxHeight: COLUMN_MAX_HEIGHT }}
         >
           <div className="flex items-center justify-between px-4 pt-3 pb-2">
@@ -266,7 +273,7 @@ function DashboardPage() {
           </div>
         </section>
 
-        <div className="flex flex-col gap-6 overflow-y-auto" style={{ maxHeight: COLUMN_MAX_HEIGHT }}>
+        <div className="flex min-w-0 flex-col gap-6 overflow-y-auto" style={{ maxHeight: COLUMN_MAX_HEIGHT }}>
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Integrations</h2>
