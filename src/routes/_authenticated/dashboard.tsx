@@ -70,6 +70,10 @@ function DashboardPage() {
   const pubFn = useServerFn(runPublisher);
   const serpFn = useServerFn(runSerpSweep);
   const [manualExpanded, setManualExpanded] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
+  const [boardsExpanded, setBoardsExpanded] = useState(false);
+  const ACTIVITY_COLLAPSED = 5;
+  const BOARDS_COLLAPSED = 5;
 
   const { data } = useQuery({
     queryKey: ["dash", selectedSiteId],
