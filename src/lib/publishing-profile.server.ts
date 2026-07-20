@@ -214,5 +214,5 @@ export async function setCapMode(
     detail: { action: mode === "manual" ? "switched_to_manual" : "switched_to_auto" },
   });
 
-  return { ok: true, cap_mode: mode, effectiveCap: toCap };
+  return { ok: true, cap_mode: mode, effectiveCap: toCap ?? 0 };
 }
