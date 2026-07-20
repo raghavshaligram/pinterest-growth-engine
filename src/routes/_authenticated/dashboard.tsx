@@ -285,7 +285,7 @@ function DashboardPage() {
       </section>
 
       {/* Activity + Pins by board sit side by side on their own row. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section
           className="card-glow flex min-w-0 flex-col rounded-[12px]"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
