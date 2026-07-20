@@ -104,17 +104,14 @@ function DashboardPage() {
   const providers = ["openai", "replicate", "apify", "pinterest"] as const;
   const showSiteTint = selectedSiteId === null;
 
-  // Errors sort to the top (distinct treatment); routine "manually
-  // posted" entries beyond the first couple collapse into one row so a
-  // busy week doesn't bury the errors and real publish events under a
-  // wall of identical manual-mark lines.
+  // Newest first, regardless of level. Manual-post spam still collapses
+  // via the "N more manually posted" toggle so it doesn't drown the feed.
   const allLogs: LogRow[] = [...(data?.recentLogs ?? [])].sort(
     (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
   );
-  const errorLogs = allLogs.filter((l) => l.level === "error");
-  const rest = allLogs.filter((l) => l.level !== "error");
-  const manualLogs = rest.filter((l) => l.message.startsWith("Marked as manually posted"));
-  const normalLogs = rest.filter((l) => !l.message.startsWith("Marked as manually posted"));
+  const isManual = (l: LogRow) => l.message.startsWith("Marked as manually posted");
+  const manualLogs = allLogs.filter(isManual);
+  const nonManualLogs = allLogs.filter((l) => !isManual(l));
   const manualVisible = manualExpanded ? manualLogs : manualLogs.slice(0, MANUAL_INLINE_LIMIT);
   const manualHiddenCount = manualLogs.length - manualVisible.length;
 
