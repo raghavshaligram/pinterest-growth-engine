@@ -104,17 +104,14 @@ function DashboardPage() {
   const providers = ["openai", "replicate", "apify", "pinterest"] as const;
   const showSiteTint = selectedSiteId === null;
 
-  // Errors sort to the top (distinct treatment); routine "manually
-  // posted" entries beyond the first couple collapse into one row so a
-  // busy week doesn't bury the errors and real publish events under a
-  // wall of identical manual-mark lines.
+  // Newest first, regardless of level. Manual-post spam still collapses
+  // via the "N more manually posted" toggle so it doesn't drown the feed.
   const allLogs: LogRow[] = [...(data?.recentLogs ?? [])].sort(
     (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
   );
-  const errorLogs = allLogs.filter((l) => l.level === "error");
-  const rest = allLogs.filter((l) => l.level !== "error");
-  const manualLogs = rest.filter((l) => l.message.startsWith("Marked as manually posted"));
-  const normalLogs = rest.filter((l) => !l.message.startsWith("Marked as manually posted"));
+  const isManual = (l: LogRow) => l.message.startsWith("Marked as manually posted");
+  const manualLogs = allLogs.filter(isManual);
+  const nonManualLogs = allLogs.filter((l) => !isManual(l));
   const manualVisible = manualExpanded ? manualLogs : manualLogs.slice(0, MANUAL_INLINE_LIMIT);
   const manualHiddenCount = manualLogs.length - manualVisible.length;
 
@@ -288,7 +285,7 @@ function DashboardPage() {
       </section>
 
       {/* Activity + Pins by board sit side by side on their own row. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <section
           className="card-glow flex min-w-0 flex-col rounded-[12px]"
           style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
@@ -307,13 +304,18 @@ function DashboardPage() {
               View all
             </Link>
           </div>
-          <div className="px-3 pb-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+          <div className="flex-1 px-3 pb-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
             {(() => {
-              const combined: Array<{ log: LogRow; variant: "error" | "normal" | "manual" }> = [
-                ...errorLogs.map((l) => ({ log: l, variant: "error" as const })),
-                ...normalLogs.map((l) => ({ log: l, variant: "normal" as const })),
+              // Sort strictly by time, newest first. Manual-posts are
+              // still folded via the manualHiddenCount button below.
+              const merged: Array<{ log: LogRow; variant: "error" | "normal" | "manual" }> = [
+                ...nonManualLogs.map((l) => ({
+                  log: l,
+                  variant: (l.level === "error" ? "error" : "normal") as "error" | "normal" | "manual",
+                })),
                 ...manualVisible.map((l) => ({ log: l, variant: "manual" as const })),
-              ];
+              ].sort((a, b) => new Date(b.log.at).getTime() - new Date(a.log.at).getTime());
+              const combined = merged;
               const shown = activityExpanded ? combined : combined.slice(0, ACTIVITY_COLLAPSED);
               const hidden = combined.length - shown.length;
               return (
